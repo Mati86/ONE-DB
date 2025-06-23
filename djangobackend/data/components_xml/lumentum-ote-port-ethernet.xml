@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<data xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+  <physical-ports xmlns="http://www.lumentum.com/lumentum-ote-port">
+    <physical-port>
+      <dn/>
+      <port-extension>
+        <!-- # entries: 0.. -->
+      </port-extension>
+      <config>
+        <custom-name/>
+        <maintenance-state/>
+        <auto-negotiate xmlns="http://www.lumentum.com/lumentum-ote-port-ethernet"/>
+        <duplex-mode xmlns="http://www.lumentum.com/lumentum-ote-port-ethernet"/>
+        <port-speed xmlns="http://www.lumentum.com/lumentum-ote-port-ethernet"/>
+        <lldp xmlns="http://www.lumentum.com/lumentum-ote-port-ethernet">
+          <enabled/>
+        </lldp>
+        <stp xmlns="http://www.lumentum.com/lumentum-ote-port-ethernet">
+          <enabled/>
+          <link-cost/>
+          <port-priority/>
+          <stp-group/>
+        </stp>
+        <utilization-warning-threshold xmlns="http://www.lumentum.com/lumentum-ote-port-ethernet"/>
+        <utilization-alarm-threshold xmlns="http://www.lumentum.com/lumentum-ote-port-ethernet"/>
+        <utilization-threshold-interval xmlns="http://www.lumentum.com/lumentum-ote-port-ethernet"/>
+      </config>
+      <state>
+        <entity-description/>
+        <operational-state/>
+        <link-state xmlns="http://www.lumentum.com/lumentum-ote-port-ethernet"/>
+        <lldp xmlns="http://www.lumentum.com/lumentum-ote-port-ethernet">
+          <enabled/>
+          <lldp-remote-entities>
+            <lldp-remote-entity>
+              <remote-port-id/>
+              <remote-system-name/>
+              <remote-port-description/>
+              <remote-mgmt-address/>
+              <remote-chassis-id/>
+            </lldp-remote-entity>
+          </lldp-remote-entities>
+        </lldp>
+        <stp xmlns="http://www.lumentum.com/lumentum-ote-port-ethernet">
+          <enabled/>
+          <link-cost/>
+          <port-priority/>
+          <stp-group/>
+          <port-role/>
+          <port-state/>
+        </stp>
+        <rx-utilization xmlns="http://www.lumentum.com/lumentum-ote-port-ethernet"/>
+        <tx-utilization xmlns="http://www.lumentum.com/lumentum-ote-port-ethernet"/>
+      </state>
+    </physical-port>
+  </physical-ports>
+  <physical-ports-metadata xmlns="http://www.lumentum.com/lumentum-ote-port">
+    <physical-port-metadata>
+      <dn/>
+      <port-extension>
+        <!-- # entries: 0.. -->
+      </port-extension>
+      <config/>
+    </physical-port-metadata>
+  </physical-ports-metadata>
+</data>

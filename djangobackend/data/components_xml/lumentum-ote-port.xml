@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<data xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+  <physical-ports xmlns="http://www.lumentum.com/lumentum-ote-port">
+    <physical-port>
+      <dn/>
+      <port-extension>
+        <!-- # entries: 0.. -->
+      </port-extension>
+      <config>
+        <custom-name/>
+        <maintenance-state/>
+      </config>
+      <state>
+        <entity-description/>
+        <operational-state/>
+      </state>
+    </physical-port>
+  </physical-ports>
+  <physical-ports-metadata xmlns="http://www.lumentum.com/lumentum-ote-port">
+    <physical-port-metadata>
+      <dn/>
+      <port-extension>
+        <!-- # entries: 0.. -->
+      </port-extension>
+      <config/>
+    </physical-port-metadata>
+  </physical-ports-metadata>
+</data>

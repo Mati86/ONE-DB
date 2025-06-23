@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<data xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+  <alarm-list xmlns="http://www.lumentum.com/lumentum-alarms">
+    <number-of-alarms/>
+    <last-changed/>
+    <alarm>
+      <resource/>
+      <alarm-type-id/>
+      <root-cause-resources/>
+      <is-cleared/>
+      <last-status-change/>
+      <last-perceived-severity/>
+      <last-alarm-text/>
+    </alarm>
+  </alarm-list>
+  <active-alarm-list xmlns="http://www.lumentum.com/lumentum-alarms">
+    <number-of-alarms/>
+    <last-changed/>
+    <alarm>
+      <resource/>
+      <alarm-type-id/>
+      <root-cause-resources/>
+      <is-cleared/>
+      <last-status-change/>
+      <last-perceived-severity/>
+      <last-alarm-text/>
+    </alarm>
+  </active-alarm-list>
+</data>

@@ -1,0 +1,89 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<data xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+  <physical-ports xmlns="http://www.lumentum.com/lumentum-ote-port">
+    <physical-port>
+      <dn/>
+      <port-extension>
+        <!-- # entries: 0.. -->
+      </port-extension>
+      <config>
+        <custom-name/>
+        <maintenance-state/>
+        <input-low-degrade-threshold xmlns="http://www.lumentum.com/lumentum-ote-port-optical"/>
+        <input-low-degrade-hysteresis xmlns="http://www.lumentum.com/lumentum-ote-port-optical"/>
+        <optical-los-threshold xmlns="http://www.lumentum.com/lumentum-ote-port-optical"/>
+        <optical-los-hysteresis xmlns="http://www.lumentum.com/lumentum-ote-port-optical"/>
+        <optical-loo-threshold xmlns="http://www.lumentum.com/lumentum-ote-port-optical"/>
+        <optical-loo-hysteresis xmlns="http://www.lumentum.com/lumentum-ote-port-optical"/>
+        <outvoa-target-attenuation xmlns="http://www.lumentum.com/lumentum-ote-port-optical"/>
+        <optical-return-loss-threshold xmlns="http://www.lumentum.com/lumentum-ote-port-optical"/>
+        <optical-return-loss-hysteresis xmlns="http://www.lumentum.com/lumentum-ote-port-optical"/>
+      </config>
+      <state>
+        <entity-description/>
+        <operational-state/>
+        <input-power xmlns="http://www.lumentum.com/lumentum-ote-port-optical"/>
+        <output-power xmlns="http://www.lumentum.com/lumentum-ote-port-optical"/>
+        <outvoa-input-power-to-voa xmlns="http://www.lumentum.com/lumentum-ote-port-optical"/>
+        <outvoa-actual-attenuation xmlns="http://www.lumentum.com/lumentum-ote-port-optical"/>
+        <back-reflection-power xmlns="http://www.lumentum.com/lumentum-ote-port-optical"/>
+        <optical-return-loss xmlns="http://www.lumentum.com/lumentum-ote-port-optical"/>
+        <optical-spectral-data-list xmlns="http://www.lumentum.com/lumentum-ote-port-optical"/>
+        <optical-power-monitor-bands xmlns="http://www.lumentum.com/lumentum-ote-port-optical">
+          <optical-power-monitor-band>
+            <band-name/>
+            <start-freq/>
+            <end-freq/>
+            <input-power/>
+            <output-power/>
+          </optical-power-monitor-band>
+        </optical-power-monitor-bands>
+      </state>
+    </physical-port>
+  </physical-ports>
+  <physical-ports-metadata xmlns="http://www.lumentum.com/lumentum-ote-port">
+    <physical-port-metadata>
+      <dn/>
+      <port-extension>
+        <!-- # entries: 0.. -->
+      </port-extension>
+      <config>
+        <input-low-degrade-threshold xmlns="http://www.lumentum.com/lumentum-ote-port-optical">
+          <minimum/>
+          <maximum/>
+          <default/>
+        </input-low-degrade-threshold>
+        <input-low-degrade-hysteresis xmlns="http://www.lumentum.com/lumentum-ote-port-optical">
+          <minimum/>
+          <maximum/>
+          <default/>
+        </input-low-degrade-hysteresis>
+        <optical-los-threshold xmlns="http://www.lumentum.com/lumentum-ote-port-optical">
+          <minimum/>
+          <maximum/>
+          <default/>
+        </optical-los-threshold>
+        <optical-los-hysteresis xmlns="http://www.lumentum.com/lumentum-ote-port-optical">
+          <minimum/>
+          <maximum/>
+          <default/>
+        </optical-los-hysteresis>
+        <optical-loo-threshold xmlns="http://www.lumentum.com/lumentum-ote-port-optical">
+          <minimum/>
+          <maximum/>
+          <default/>
+        </optical-loo-threshold>
+        <optical-loo-hysteresis xmlns="http://www.lumentum.com/lumentum-ote-port-optical">
+          <minimum/>
+          <maximum/>
+          <default/>
+        </optical-loo-hysteresis>
+        <outvoa-target-attenuation xmlns="http://www.lumentum.com/lumentum-ote-port-optical">
+          <minimum/>
+          <maximum/>
+          <default/>
+        </outvoa-target-attenuation>
+      </config>
+    </physical-port-metadata>
+  </physical-ports-metadata>
+</data>
