@@ -91,9 +91,7 @@ const Sidebar = () => {
                   </ListItemIcon>
                   <SidebarButtonText text='Booster' />
                 </ListItemButton>
-              </Link>
-
-              <Link
+              </Link>              <Link
                 to='/configuration/preamplifier'
                 style={{ textDecoration: 'none' }}
               >
@@ -105,7 +103,7 @@ const Sidebar = () => {
                 </ListItemButton>
               </Link>
               <Link
-                to='/monitoring/multiplexer/ports'
+                to='/configuration/multiplexer'
                 style={{ textDecoration: 'none' }}
               >
                 <ListItemButton sx={{ pl: 4 }}>
@@ -116,7 +114,7 @@ const Sidebar = () => {
                 </ListItemButton>
               </Link>
               <Link
-                to='/monitoring/demultiplexer/ports'
+                to='/configuration/demultiplexer'
                 style={{ textDecoration: 'none' }}
               >
                 <ListItemButton sx={{ pl: 4 }}>

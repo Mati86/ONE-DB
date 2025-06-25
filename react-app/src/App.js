@@ -51,13 +51,18 @@ function App() {
                   <Route index element={<OpticalPort />} />
                 </Route>
               </Route>
-            </Route>
-            <Route path='configuration'>
+            </Route>            <Route path='configuration'>
               <Route path='booster'>
                 <Route index element={<BoosterConfiguration />} />
               </Route>
               <Route path='preamplifier'>
                 <Route index element={<PreamplifierConfiguration />} />
+              </Route>
+              <Route path='multiplexer'>
+                <Route index element={<MultiplexerPorts />} />
+              </Route>
+              <Route path='demultiplexer'>
+                <Route index element={<DemultiplexerPorts />} />
               </Route>
               <Route path='optical-ports'>
                 <Route path=':port'>
