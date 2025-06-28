@@ -12,18 +12,24 @@ function AddDependenciesSection({ yangModules, deviceCredentials }) {
   const [moduleDependencies, setModuleDependencies] = useState([]);
 
   function handleAddButtonClick() {
-    setModuleDependencies(prev => {
-      return [
-        ...prev,
-        {
-          id: uuidv4(),
-          moduleId: yangModules[0].id,
-          dependencies: [],
-          dependencyName: '',
-        },
-      ];
-    });
+  // Check if yangModules array has items before accessing
+  if (yangModules.length === 0) {
+    toast.error('Please add Yang Modules first before creating dependencies');
+    return;
   }
+
+  setModuleDependencies(prev => {
+    return [
+      ...prev,
+      {
+        id: uuidv4(),
+        moduleId: yangModules[0].id, // Now safe to access
+        dependencies: [],
+        dependencyName: '',
+      },
+    ];
+  });
+}
 
   function handleDependencyDelete(dependencyId) {
     setModuleDependencies(prev => {
