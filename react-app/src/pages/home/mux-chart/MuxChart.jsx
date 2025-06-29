@@ -26,14 +26,17 @@ import {
 import {
   getApiPayloadForDeviceData,
   getDataParamsForPort,
+  getCurrentDeviceId,
 } from '../../../utils/utils';
 
 function getApiPayload(portNumbers) {
+  const currentDeviceId = getCurrentDeviceId();
   return getApiPayloadForDeviceData(
     portNumbers.map(portNumber => ({
       key: portNumber,
       ...getDataParamsForPort(portNumber, [OPTICAL_PORT_PARAMS.InputPower]),
-    }))
+    })),
+    currentDeviceId
   );
 }
 
@@ -41,10 +44,12 @@ function MuxChart() {
   const [selectedPortNumbers, setSelectedPortNumbers] = useState(['4101']);
   const [currentData, setCurrentData] = useState([]);
   const pollInterval = useDataPollInterval();
+  const currentDeviceId = getCurrentDeviceId();
 
   const apiPayload = useMemo(() => {
+    if (!currentDeviceId) return null;
     return getApiPayload(selectedPortNumbers);
-  }, [selectedPortNumbers]);
+  }, [selectedPortNumbers, currentDeviceId]);
 
   const apiData = useApiPoll(pollInterval, apiPayload);
 

@@ -9,12 +9,13 @@ import {
   getPortType,
   getReadApiPayloadForPort,
   notifySuccess,
+  getCurrentDeviceId,
 } from '../../../utils/utils';
 import Layout from '../../common-components/Layout';
 import SaveButton from '../../common-components/SaveButton';
 import AlarmSettings from './AlarmSettings';
 
-function getApiPayloadForReadConfigurationData(portNumber) {
+function getApiPayloadForReadConfigurationData(portNumber, deviceId = null) {
   const result = [
     OPTICAL_PORT_PARAMS.CustomName,
     OPTICAL_PORT_PARAMS.MaintenanceState,
@@ -28,11 +29,12 @@ function getApiPayloadForReadConfigurationData(portNumber) {
       OPTICAL_PORT_PARAMS.OpticalLosHysteresis
     );
 
-  return getReadApiPayloadForPort(portNumber, result);
+  return getReadApiPayloadForPort(portNumber, result, deviceId);
 }
 
 function OpticalPortConfiguration() {
   const { port } = useParams();
+  const currentDeviceId = getCurrentDeviceId();
 
   const [form, setForm] = useState({});
 
@@ -50,7 +52,8 @@ function OpticalPortConfiguration() {
         getConfigurationApiPayloadForPort(
           port,
           parameterName,
-          form[parameterName]
+          form[parameterName],
+          currentDeviceId
         )
       );
       notifySuccess('Port configuration successfull');
@@ -60,8 +63,9 @@ function OpticalPortConfiguration() {
   }
 
   const apiPayloadForReadConfigurationData = useMemo(() => {
-    return getApiPayloadForReadConfigurationData(port);
-  }, [port]);
+    if (!currentDeviceId) return null;
+    return getApiPayloadForReadConfigurationData(port, currentDeviceId);
+  }, [port, currentDeviceId]);
 
   const portType = useMemo(() => getPortType(port), [port]);
 
@@ -80,7 +84,7 @@ function OpticalPortConfiguration() {
   }, [apiPayloadForReadConfigurationData]);
 
   return (
-    <Layout>
+    <Layout requireDevice={true}>
       <Box p={4}>
         <Typography variant='h4' mb={3}>
           Port: {port}

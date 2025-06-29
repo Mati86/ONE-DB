@@ -7,7 +7,7 @@ import PreamplifierChart from './preamplifier-chart/PreamplifierChart';
 
 const Home = () => {
   return (
-    <Layout>
+    <Layout requireDevice={true}>
       <Box sx={{ display: 'flex', padding: '20px', gap: '20px' }}></Box>
 
       <Grid

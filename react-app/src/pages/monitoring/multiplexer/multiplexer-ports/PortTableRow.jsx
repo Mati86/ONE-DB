@@ -1,25 +1,28 @@
 import { Box, Button, TableCell, TableRow } from '@mui/material';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import useApiPoll from '../../../../hooks/useApiPoll';
 import { OPTICAL_PORT_PARAMS, PORT_TYPE } from '../../../../utils/data';
-import { getReadApiPayloadForPort } from '../../../../utils/utils';
+import { getReadApiPayloadForPort, getCurrentDeviceId } from '../../../../utils/utils';
 
 function PortTableRow({ portNumber, portType }) {
   const location = useLocation();
   const isConfigurationRoute = location.pathname.startsWith('/configuration');
   const isMonitoringRoute = location.pathname.startsWith('/monitoring');
+  const currentDeviceId = getCurrentDeviceId();
   
-  const data = useApiPoll(
-    10000,
-    getReadApiPayloadForPort(portNumber, [
+  const apiPayload = useMemo(() => {
+    if (!currentDeviceId) return null;
+    return getReadApiPayloadForPort(portNumber, [
       OPTICAL_PORT_PARAMS.EntityDescription,
       OPTICAL_PORT_PARAMS.OperationalState,
       portType === PORT_TYPE.Multiplexer
         ? OPTICAL_PORT_PARAMS.InputPower
         : OPTICAL_PORT_PARAMS.OutputPower,
-    ])
-  );
+    ], currentDeviceId);
+  }, [portNumber, portType, currentDeviceId]);
+  
+  const data = useApiPoll(10000, apiPayload);
 
   return (
     <>

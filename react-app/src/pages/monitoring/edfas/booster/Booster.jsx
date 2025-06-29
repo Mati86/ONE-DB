@@ -1,5 +1,5 @@
 import { Box } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import useApiPoll from '../../../../hooks/useApiPoll';
 import useDataPollInterval from '../../../../hooks/useDataPollInterval';
 import {
@@ -7,24 +7,28 @@ import {
   EDFA_PLOTTABLE_PARAMETERS,
   EDFA_TYPE,
 } from '../../../../utils/data';
-import { getReadApiPayloadForEdfa, pickKeys } from '../../../../utils/utils';
+import { getReadApiPayloadForEdfa, pickKeys, getCurrentDeviceId } from '../../../../utils/utils';
 import Layout from '../../../common-components/Layout';
 import EdfaMonitoredData from '../EdfaMonitoredData';
-
-const readApiPayloadForEdfa = getReadApiPayloadForEdfa(EDFA_TYPE.Booster, [
-  EDFA_PARAMS.EntityDescription,
-  EDFA_PARAMS.OperationalState,
-  EDFA_PARAMS.InputPower,
-  EDFA_PARAMS.OutputPower,
-  EDFA_PARAMS.MeasuredGain,
-  EDFA_PARAMS.BackReflectionPower,
-  EDFA_PARAMS.OpticalReturnLoss,
-  EDFA_PARAMS.AlsDisabledSecondsRemaining,
-]);
 
 function Booster() {
   const [monitoredData, setMonitoredData] = useState([]);
   const pollInterval = useDataPollInterval();
+  const currentDeviceId = getCurrentDeviceId();
+
+  const readApiPayloadForEdfa = useMemo(() => {
+    if (!currentDeviceId) return null;
+    return getReadApiPayloadForEdfa(EDFA_TYPE.Booster, [
+      EDFA_PARAMS.EntityDescription,
+      EDFA_PARAMS.OperationalState,
+      EDFA_PARAMS.InputPower,
+      EDFA_PARAMS.OutputPower,
+      EDFA_PARAMS.MeasuredGain,
+      EDFA_PARAMS.BackReflectionPower,
+      EDFA_PARAMS.OpticalReturnLoss,
+      EDFA_PARAMS.AlsDisabledSecondsRemaining,
+    ], currentDeviceId);
+  }, [currentDeviceId]);
 
   const data = useApiPoll(pollInterval, readApiPayloadForEdfa);
 
@@ -47,7 +51,7 @@ function Booster() {
   }, [data, pollInterval]);
 
   return (
-    <Layout>
+    <Layout requireDevice={true}>
       <Box sx={{ padding: 5 }}>
         <EdfaMonitoredData
           inputPower={data?.data[EDFA_PARAMS.InputPower]}

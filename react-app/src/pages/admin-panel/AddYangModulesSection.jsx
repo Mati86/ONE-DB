@@ -11,6 +11,7 @@ function AddYangModulesSection({
   yangModules,
   setYangModules,
   deviceCredentials,
+  currentDeviceId,
 }) {
   function handleAddButtonClick() {
     setYangModules(prev => {
@@ -38,6 +39,7 @@ function AddYangModulesSection({
           },
         ],
         credentials: deviceCredentials,
+        deviceId: currentDeviceId,
       });
       saveYangModulesToLocalStorage();
       notifySuccess('Yang Module Saved');
@@ -53,6 +55,7 @@ function AddYangModulesSection({
           name: yangModule.name,
         })),
         credentials: deviceCredentials,
+        deviceId: currentDeviceId,
       });
       saveYangModulesToLocalStorage();
       notifySuccess('Yang Modules Saved');
@@ -66,13 +69,15 @@ function AddYangModulesSection({
       const filtered = prev.filter(
         yangModule => yangModule.id !== yangModuleId
       );
-      localStorage.setItem('yangModules', JSON.stringify(filtered));
+      const storageKey = currentDeviceId ? `yangModules_${currentDeviceId}` : 'yangModules';
+      localStorage.setItem(storageKey, JSON.stringify(filtered));
       return filtered;
     });
   }
 
   function saveYangModulesToLocalStorage() {
-    localStorage.setItem('yangModules', JSON.stringify(yangModules));
+    const storageKey = currentDeviceId ? `yangModules_${currentDeviceId}` : 'yangModules';
+    localStorage.setItem(storageKey, JSON.stringify(yangModules));
   }
 
   return (

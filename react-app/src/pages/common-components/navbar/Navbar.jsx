@@ -1,6 +1,39 @@
-import { Box } from '@mui/material';
+import { Box, MenuItem, Select, Typography } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { getCurrentDeviceId, getDevices, setCurrentDeviceId } from '../../../utils/utils';
 
 const Navbar = () => {
+  const [devices, setDevices] = useState([]);
+  const [currentDevice, setCurrentDevice] = useState('');
+
+  useEffect(() => {
+    const updateDeviceList = () => {
+      const deviceList = getDevices();
+      setDevices(deviceList);
+      setCurrentDevice(getCurrentDeviceId() || '');
+    };
+
+    // Initial load
+    updateDeviceList();
+
+    // Listen for device change events
+    const handleDeviceChange = () => {
+      updateDeviceList();
+    };
+
+    window.addEventListener('deviceChange', handleDeviceChange);
+    return () => window.removeEventListener('deviceChange', handleDeviceChange);
+  }, []);
+
+  function handleDeviceChange(e) {
+    const deviceId = e.target.value;
+    setCurrentDevice(deviceId);
+    setCurrentDeviceId(deviceId);
+    // Note: Page reload removed for better UX - components will react to device changes automatically
+  }
+
+  const selectedDevice = devices.find(d => d.id === currentDevice);
+
   return (
     <Box
       sx={{
@@ -18,15 +51,42 @@ const Navbar = () => {
           padding: '20px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'flex-end',
+          justifyContent: 'space-between',
         }}
       >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Typography variant='body2' color='textSecondary'>
+            Current Device:
+          </Typography>
+          <Select
+            value={currentDevice}
+            onChange={handleDeviceChange}
+            displayEmpty
+            size='small'
+            sx={{ minWidth: 200 }}
+          >
+            <MenuItem value=''>
+              <em>No device selected</em>
+            </MenuItem>
+            {devices.map(device => (
+              <MenuItem key={device.id} value={device.id}>
+                {device.name} ({device.credentials.ip})
+              </MenuItem>
+            ))}
+          </Select>
+        </Box>
+        
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
           }}
         >
+          {selectedDevice && (
+            <Typography variant='body2' color='primary'>
+              Connected to: {selectedDevice.name}
+            </Typography>
+          )}
           {/* <Box
             sx={{
               display: 'flex',

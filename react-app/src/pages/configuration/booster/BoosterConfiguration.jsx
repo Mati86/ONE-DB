@@ -9,7 +9,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { configureDeviceData, readDeviceData } from '../../../utils/api';
 import { EDFA_PARAMS, EDFA_TYPE } from '../../../utils/data';
@@ -17,38 +17,44 @@ import {
   getConfigurationApiPayloadForEdfa,
   getReadApiPayloadForEdfa,
   notifySuccess,
+  getCurrentDeviceId,
 } from '../../../utils/utils';
 import Layout from '../../common-components/Layout';
 import SaveButton from '../../common-components/SaveButton';
 import AlarmSettings from '../edfa/AlarmSettings';
 
-const apiPayloadForReadConfigurationData = getReadApiPayloadForEdfa(
-  EDFA_TYPE.Booster,
-  [
-    EDFA_PARAMS.CustomName,
-    EDFA_PARAMS.MaintenanceState,
-    EDFA_PARAMS.ControlMode,
-    EDFA_PARAMS.GainSwitchMode,
-    EDFA_PARAMS.TargetGain,
-    EDFA_PARAMS.TargetPower,
-    EDFA_PARAMS.TargetGainTilt,
-    EDFA_PARAMS.LosShutdown,
-    EDFA_PARAMS.OpticalLooThreshold,
-    EDFA_PARAMS.OpticalLooHysteresis,
-    EDFA_PARAMS.InputOverloadThreshold,
-    EDFA_PARAMS.InputOverloadHysteresis,
-    EDFA_PARAMS.InputLowDegradeThreshold,
-    EDFA_PARAMS.InputLowDegradeHysteresis,
-    EDFA_PARAMS.OpticalLosThreshold,
-    EDFA_PARAMS.OpticalLosHysteresis,
-    EDFA_PARAMS.OrlThresholdWarningThreshold,
-    EDFA_PARAMS.OrlThresholdWarningHysteresis,
-    EDFA_PARAMS.ForceApr,
-  ]
-);
-
 function BoosterConfiguration() {
   const [form, setForm] = useState({});
+  const currentDeviceId = getCurrentDeviceId();
+
+  const apiPayloadForReadConfigurationData = useMemo(() => {
+    if (!currentDeviceId) return null;
+    return getReadApiPayloadForEdfa(
+      EDFA_TYPE.Booster,
+      [
+        EDFA_PARAMS.CustomName,
+        EDFA_PARAMS.MaintenanceState,
+        EDFA_PARAMS.ControlMode,
+        EDFA_PARAMS.GainSwitchMode,
+        EDFA_PARAMS.TargetGain,
+        EDFA_PARAMS.TargetPower,
+        EDFA_PARAMS.TargetGainTilt,
+        EDFA_PARAMS.LosShutdown,
+        EDFA_PARAMS.OpticalLooThreshold,
+        EDFA_PARAMS.OpticalLooHysteresis,
+        EDFA_PARAMS.InputOverloadThreshold,
+        EDFA_PARAMS.InputOverloadHysteresis,
+        EDFA_PARAMS.InputLowDegradeThreshold,
+        EDFA_PARAMS.InputLowDegradeHysteresis,
+        EDFA_PARAMS.OpticalLosThreshold,
+        EDFA_PARAMS.OpticalLosHysteresis,
+        EDFA_PARAMS.OrlThresholdWarningThreshold,
+        EDFA_PARAMS.OrlThresholdWarningHysteresis,
+        EDFA_PARAMS.ForceApr,
+      ],
+      currentDeviceId
+    );
+  }, [currentDeviceId]);
 
   const handleInputChange = e => {
     const { name, value } = e.target;
@@ -64,7 +70,8 @@ function BoosterConfiguration() {
         getConfigurationApiPayloadForEdfa(
           EDFA_TYPE.Booster,
           parameterName,
-          form[parameterName]
+          form[parameterName],
+          getCurrentDeviceId()
         )
       );
       notifySuccess('Booster configuration successfull');
@@ -85,10 +92,10 @@ function BoosterConfiguration() {
     }
 
     getEdfaData();
-  }, []);
+  }, [apiPayloadForReadConfigurationData]);
 
   return (
-    <Layout>
+    <Layout requireDevice={true}>
       <Box sx={{ padding: 5 }}>
         <Typography variant='h4' mb={3}>
           Booster Configuration

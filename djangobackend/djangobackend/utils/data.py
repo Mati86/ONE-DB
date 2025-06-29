@@ -1,4 +1,5 @@
 import os
+import shutil
 
 from ..settings import BASE_DIR
 
@@ -12,6 +13,69 @@ DEVICE_SCHEMA_RESPONSES_DIR = os.path.join(
 ERROR_MESSAGES = {
     "ServerError": "A server errror occurred"
 }
+
+def ensure_base_directories_exist():
+    """Ensure all base directories exist"""
+    os.makedirs(YANG_MODULES_DIR, exist_ok=True)
+    os.makedirs(XML_SKELETONS_DIR, exist_ok=True)
+    os.makedirs(DEVICE_SCHEMA_RESPONSES_DIR, exist_ok=True)
+
+def get_device_yang_modules_dir(device_id=None):
+    """Get device-specific YANG modules directory"""
+    ensure_base_directories_exist()
+    if device_id:
+        device_dir = os.path.join(YANG_MODULES_DIR, f'device_{device_id}')
+        os.makedirs(device_dir, exist_ok=True)
+        return device_dir
+    return YANG_MODULES_DIR
+
+def get_device_xml_skeletons_dir(device_id=None):
+    """Get device-specific XML skeletons directory"""
+    ensure_base_directories_exist()
+    if device_id:
+        device_dir = os.path.join(XML_SKELETONS_DIR, f'device_{device_id}')
+        os.makedirs(device_dir, exist_ok=True)
+        return device_dir
+    return XML_SKELETONS_DIR
+
+def cleanup_device_data(device_id):
+    """
+    Clean up device-specific data when a device is deleted
+    
+    Args:
+        device_id (str): The device ID to clean up
+    """
+    if not device_id:
+        return
+    
+    try:
+        # Clean up device-specific YANG modules directory
+        device_yang_dir = get_device_yang_modules_dir(device_id)
+        if os.path.exists(device_yang_dir):
+            shutil.rmtree(device_yang_dir)
+            print(f"Cleaned up YANG modules directory for device {device_id}")
+        
+        # Clean up device-specific XML skeletons directory
+        device_xml_dir = get_device_xml_skeletons_dir(device_id)
+        if os.path.exists(device_xml_dir):
+            shutil.rmtree(device_xml_dir)
+            print(f"Cleaned up XML skeletons directory for device {device_id}")
+            
+    except Exception as e:
+        print(f"Error cleaning up device data for {device_id}: {str(e)}")
+
+def ensure_device_directories_exist(device_id=None):
+    """
+    Ensure device-specific directories exist
+    
+    Args:
+        device_id (str, optional): Device ID to create directories for
+    """
+    if device_id:
+        get_device_yang_modules_dir(device_id)
+        get_device_xml_skeletons_dir(device_id)
+    else:
+        ensure_base_directories_exist()
 
 sample_rpc_reply_edfa = '''
 <rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="101">

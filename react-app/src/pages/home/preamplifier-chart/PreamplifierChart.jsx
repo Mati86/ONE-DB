@@ -1,18 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import useApiPoll from '../../../hooks/useApiPoll';
 import useDataPollInterval from '../../../hooks/useDataPollInterval';
 import { EDFA_PARAMS, EDFA_TYPE } from '../../../utils/data';
-import { getReadApiPayloadForEdfa } from '../../../utils/utils';
+import { getReadApiPayloadForEdfa, getCurrentDeviceId } from '../../../utils/utils';
 import Chart from '../chart/Chart';
-
-const apiPayload = getReadApiPayloadForEdfa(EDFA_TYPE.Preamplifier, [
-  EDFA_PARAMS.InputPower,
-  EDFA_PARAMS.OutputPower,
-]);
 
 function PreamplifierChart() {
   const [historicalData, setHistoricalData] = useState([]);
   const pollInterval = useDataPollInterval();
+  const currentDeviceId = getCurrentDeviceId();
+
+  const apiPayload = useMemo(() => {
+    if (!currentDeviceId) return null;
+    return getReadApiPayloadForEdfa(EDFA_TYPE.Preamplifier, [
+      EDFA_PARAMS.InputPower,
+      EDFA_PARAMS.OutputPower,
+    ], currentDeviceId);
+  }, [currentDeviceId]);
 
   const data = useApiPoll(pollInterval, apiPayload);
 

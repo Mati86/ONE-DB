@@ -12,11 +12,13 @@ import {
   getPortType,
   getReadApiPayloadForPort,
   pickKeys,
+  getCurrentDeviceId,
 } from '../../../utils/utils';
 import Layout from '../../common-components/Layout';
 import OpticalPortMonitoredData from './OpticalPortMonitoredData';
 
 function getApiPayload(portNumber) {
+  const currentDeviceId = getCurrentDeviceId();
   const parameters = [
     OPTICAL_PORT_PARAMS.EntityDescription,
     OPTICAL_PORT_PARAMS.OperationalState,
@@ -26,17 +28,19 @@ function getApiPayload(portNumber) {
     parameters.push(OPTICAL_PORT_PARAMS.InputPower);
   if (portType === PORT_TYPE.Demultiplexer)
     parameters.push(OPTICAL_PORT_PARAMS.OutputPower);
-  return getReadApiPayloadForPort(portNumber, parameters);
+  return getReadApiPayloadForPort(portNumber, parameters, currentDeviceId);
 }
 
 function OpticalPort() {
   const [monitoredData, setMonitoredData] = useState([]);
   const pollInterval = useDataPollInterval();
   const params = useParams();
+  const currentDeviceId = getCurrentDeviceId();
 
   const apiPayload = useMemo(() => {
+    if (!currentDeviceId) return null;
     return getApiPayload(params.port);
-  }, [params.port]);
+  }, [params.port, currentDeviceId]);
 
   const portType = useMemo(() => {
     return getPortType(params.port);
@@ -63,7 +67,7 @@ function OpticalPort() {
   }, [data, pollInterval]);
 
   return (
-    <Layout>
+    <Layout requireDevice={true}>
       <Box sx={{ padding: 5 }}>
         <Typography variant='h4' mb={3}>
           Port {params.port} State

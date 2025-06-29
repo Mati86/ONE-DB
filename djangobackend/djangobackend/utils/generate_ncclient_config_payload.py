@@ -7,11 +7,31 @@ from .common import (add_request_parameters, clean_xml_from_namespaces,
                      get_namespace_attribute_dictionary, get_xml_tree,
                      get_xpath, make_xml_from_xpath, make_xml_with_namespaces)
 from .component_to_yang_module_map import YANG_MODULES
+from .data import ensure_device_directories_exist
 
 
-def generate_ncclient_config_payload(component, target_parameter, value, query):
-    xml_file_path = os.path.join(
-        BASE_DIR, 'data', 'components_xml', f"{YANG_MODULES[component]}.xml")
+def generate_ncclient_config_payload(component, target_parameter, value, query, device_id=None):
+    # Ensure device directories exist
+    ensure_device_directories_exist(device_id)
+    
+    # Try device-specific XML skeleton first, then fall back to components_xml
+    if device_id:
+        from .data import get_device_xml_skeletons_dir
+        device_xml_dir = get_device_xml_skeletons_dir(device_id)
+        xml_file_path = os.path.join(device_xml_dir, f"{YANG_MODULES[component]}.xml")
+        
+        # If device-specific file doesn't exist, fall back to components_xml
+        if not os.path.exists(xml_file_path):
+            xml_file_path = os.path.join(
+                BASE_DIR, 'data', 'components_xml', f"{YANG_MODULES[component]}.xml")
+    else:
+        # Use components_xml as default
+        xml_file_path = os.path.join(
+            BASE_DIR, 'data', 'components_xml', f"{YANG_MODULES[component]}.xml")
+
+    # Check if the XML file exists
+    if not os.path.exists(xml_file_path):
+        raise FileNotFoundError(f"XML skeleton file not found: {xml_file_path}. Please generate schemas for this component first.")
 
     parser = etree.XMLParser(remove_blank_text=True)
     root = etree.parse(xml_file_path, parser)

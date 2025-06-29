@@ -7,6 +7,17 @@ import {
   MUX_OPTICAL_PORT_NUMBERS,
   PORT_TYPE,
 } from './data';
+import { cleanupDeviceData as cleanupDeviceDataAPI } from './api';
+
+// Custom event for device changes
+const DEVICE_CHANGE_EVENT = 'deviceChange';
+
+export function dispatchDeviceChangeEvent(deviceId) {
+  const event = new CustomEvent(DEVICE_CHANGE_EVENT, { 
+    detail: { deviceId } 
+  });
+  window.dispatchEvent(event);
+}
 
 export function getEdfaApiQuery(edfaName) {
   return { edfa: { dn: getEdfaDn(edfaName) } };
@@ -19,42 +30,52 @@ function getEdfaDn(edfaName) {
   throw new Error(`${edfaName} is not an edfa`);
 }
 
-export function getApiPayloadForDeviceData(dataParams) {
+export function getApiPayloadForDeviceData(dataParams, deviceId = null) {
+  const currentDeviceId = deviceId || getCurrentDeviceId();
+  const deviceCredentials = getDeviceCredentials(currentDeviceId);
+  
+  if (!deviceCredentials) {
+    throw new Error('No device credentials found. Please configure device credentials first.');
+  }
+  
   return {
-    device_credentials: getDeviceCredentials(),
-    data_params: dataParams,
+    device_credentials: deviceCredentials,
+    data_params: Array.isArray(dataParams) ? dataParams : [dataParams],
+    deviceId: currentDeviceId
   };
 }
 
-export function getReadApiPayloadForEdfa(edfaName, parameter) {
+export function getReadApiPayloadForEdfa(edfaName, parameter, deviceId = null) {
   return getApiPayloadForDeviceData({
     component: COMPONENTS.Edfa,
     parameter,
     query: getEdfaApiQuery(edfaName),
     operation: API_OPERATIONS.Read,
-  });
+  }, deviceId);
 }
 
-export function getConfigurationApiPayloadForEdfa(edfaName, parameter, value) {
+export function getConfigurationApiPayloadForEdfa(edfaName, parameter, value, deviceId = null) {
   return getApiPayloadForDeviceData({
     component: COMPONENTS.Edfa,
     parameter,
     value,
     query: getEdfaApiQuery(edfaName),
     operation: API_OPERATIONS.Config,
-  });
+  }, deviceId);
 }
 
-export function getReadApiPayloadForPort(portNumber, parameter) {
+export function getReadApiPayloadForPort(portNumber, parameter, deviceId = null) {
   return getApiPayloadForDeviceData(
-    getDataParamsForPort(portNumber, parameter)
+    getDataParamsForPort(portNumber, parameter),
+    deviceId
   );
 }
 
 export function getConfigurationApiPayloadForPort(
   portNumber,
   parameter,
-  value
+  value,
+  deviceId = null
 ) {
   return getApiPayloadForDeviceData({
     operation: API_OPERATIONS.Config,
@@ -64,7 +85,7 @@ export function getConfigurationApiPayloadForPort(
       'physical-port': { dn: `ne=1;chassis=1;card=1;port=${portNumber}` },
     },
     value,
-  });
+  }, deviceId);
 }
 
 export function getDataParamsForPort(portNumber, parameter) {
@@ -119,7 +140,73 @@ export function pickKeys(obj, keysToPick) {
   return newObject;
 }
 
-export function getDeviceCredentials() {
+export function getDeviceCredentials(deviceId = null) {
+  if (deviceId) {
+    const devices = getDevices();
+    const device = devices.find(d => d.id === deviceId);
+    return device ? device.credentials : undefined;
+  }
+  
+  // Fallback to current device or first device
+  const currentDeviceId = getCurrentDeviceId();
+  if (currentDeviceId) {
+    const devices = getDevices();
+    const device = devices.find(d => d.id === currentDeviceId);
+    if (device) return device.credentials;
+  }
+  
+  // Legacy fallback
   const deviceCredentials = localStorage.getItem('deviceCredentials');
   return deviceCredentials ? JSON.parse(deviceCredentials) : undefined;
+}
+
+export function getDevices() {
+  const devices = localStorage.getItem('devices');
+  return devices ? JSON.parse(devices) : [];
+}
+
+export function saveDevices(devices) {
+  localStorage.setItem('devices', JSON.stringify(devices));
+}
+
+export function getCurrentDeviceId() {
+  return localStorage.getItem('currentDeviceId');
+}
+
+export function setCurrentDeviceId(deviceId) {
+  localStorage.setItem('currentDeviceId', deviceId);
+  // Dispatch device change event
+  dispatchDeviceChangeEvent(deviceId);
+}
+
+export function addDevice(device) {
+  const devices = getDevices();
+  devices.push(device);
+  saveDevices(devices);
+}
+
+export function updateDevice(deviceId, updatedDevice) {
+  const devices = getDevices();
+  const index = devices.findIndex(d => d.id === deviceId);
+  if (index !== -1) {
+    devices[index] = { ...devices[index], ...updatedDevice };
+    saveDevices(devices);
+  }
+}
+
+export function deleteDevice(deviceId) {
+  const devices = getDevices();
+  const filtered = devices.filter(d => d.id !== deviceId);
+  saveDevices(filtered);
+  
+  // If deleted device was current, clear current device
+  if (getCurrentDeviceId() === deviceId) {
+    localStorage.removeItem('currentDeviceId');
+    dispatchDeviceChangeEvent(null);
+  }
+  
+  // Clean up device data on backend
+  cleanupDeviceDataAPI(deviceId).catch(error => {
+    console.warn('Failed to cleanup device data on backend:', error);
+  });
 }

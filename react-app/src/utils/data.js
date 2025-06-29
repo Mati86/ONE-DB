@@ -2,6 +2,7 @@ export const DEVICE_DATA_URL = 'http://localhost:8000/api/data';
 export const DEVICE_SCHEMAS_URL = 'http://localhost:8000/api/device_schemas';
 export const DEVICE_SCHEMA_DEPENDENCIES_URL =
   'http://localhost:8000/api/device_schema_dependencies';
+export const DEVICE_CLEANUP_URL = 'http://localhost:8000/api/device_cleanup';
 
 export const API_OPERATIONS = {
   Config: 'config',

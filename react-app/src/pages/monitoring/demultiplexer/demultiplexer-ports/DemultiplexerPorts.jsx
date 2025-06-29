@@ -5,7 +5,7 @@ import PortsTable from '../../multiplexer/multiplexer-ports/PortsTable';
 
 function DemultiplexerPorts() {
   return (
-    <Layout>
+    <Layout requireDevice={true}>
       <Box sx={{ padding: 5 }}>
         <Box>
           <PortsTable portType={PORT_TYPE.Demultiplexer} />

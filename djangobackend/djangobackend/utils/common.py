@@ -1,9 +1,77 @@
-
 import os
 
 from lxml import etree
 
 from .data import DEVICE_SCHEMA_RESPONSES_DIR
+
+
+def validate_device_credentials(device_credentials):
+    """
+    Validate device credentials
+    
+    Args:
+        device_credentials (dict): Device credentials to validate
+        
+    Returns:
+        bool: True if valid, False otherwise
+    """
+    if not device_credentials:
+        return False
+    
+    required_fields = ['ip', 'port', 'username', 'password']
+    for field in required_fields:
+        if field not in device_credentials or not device_credentials[field]:
+            return False
+    
+    # Validate port is a number
+    try:
+        port = int(device_credentials['port'])
+        if port <= 0 or port > 65535:
+            return False
+    except (ValueError, TypeError):
+        return False
+    
+    return True
+
+
+def validate_device_id(device_id):
+    """
+    Validate device ID format
+    
+    Args:
+        device_id (str): Device ID to validate
+        
+    Returns:
+        bool: True if valid, False otherwise
+    """
+    if not device_id:
+        return False
+    
+    # Device ID should be a non-empty string
+    if not isinstance(device_id, str) or len(device_id.strip()) == 0:
+        return False
+    
+    return True
+
+
+def validate_device_operation(device_credentials, device_id=None):
+    """
+    Validate device operation parameters
+    
+    Args:
+        device_credentials (dict): Device credentials
+        device_id (str, optional): Device ID
+        
+    Returns:
+        tuple: (is_valid, error_message)
+    """
+    if not validate_device_credentials(device_credentials):
+        return False, "Invalid device credentials"
+    
+    if device_id and not validate_device_id(device_id):
+        return False, "Invalid device ID"
+    
+    return True, None
 
 
 # We removed namespaces but add tjem as attribute

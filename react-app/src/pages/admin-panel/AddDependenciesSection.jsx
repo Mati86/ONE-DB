@@ -8,7 +8,7 @@ import { saveYangModuleDependencies } from '../../utils/api';
 import { notifySuccess } from '../../utils/utils';
 import DependenciesList from './DependenciesList';
 
-function AddDependenciesSection({ yangModules, deviceCredentials }) {
+function AddDependenciesSection({ yangModules, deviceCredentials, currentDeviceId }) {
   const [moduleDependencies, setModuleDependencies] = useState([]);
 
   function handleAddButtonClick() {
@@ -36,7 +36,8 @@ function AddDependenciesSection({ yangModules, deviceCredentials }) {
       const filtered = prev.filter(
         dependency => dependency.id !== dependencyId
       );
-      localStorage.setItem('yangModuleDependencies', JSON.stringify(filtered));
+      const storageKey = currentDeviceId ? `yangModuleDependencies_${currentDeviceId}` : 'yangModuleDependencies';
+      localStorage.setItem(storageKey, JSON.stringify(filtered));
       return filtered;
     });
   }
@@ -87,6 +88,7 @@ function AddDependenciesSection({ yangModules, deviceCredentials }) {
             dependency_name: dependency.dependencyName,
           };
         }),
+        deviceId: currentDeviceId,
       });
       saveYangModuleDependenciesToLocalStorage();
       notifySuccess('Module Dependencies Saved');
@@ -110,6 +112,7 @@ function AddDependenciesSection({ yangModules, deviceCredentials }) {
             dependency_name: dependency.dependencyName,
           },
         ],
+        deviceId: currentDeviceId,
       });
       saveYangModuleDependenciesToLocalStorage();
       notifySuccess('Module Dependency Saved');
@@ -119,8 +122,9 @@ function AddDependenciesSection({ yangModules, deviceCredentials }) {
   }
 
   function saveYangModuleDependenciesToLocalStorage() {
+    const storageKey = currentDeviceId ? `yangModuleDependencies_${currentDeviceId}` : 'yangModuleDependencies';
     localStorage.setItem(
-      'yangModuleDependencies',
+      storageKey,
       JSON.stringify(moduleDependencies)
     );
   }
@@ -134,12 +138,13 @@ function AddDependenciesSection({ yangModules, deviceCredentials }) {
   }, [yangModules]);
 
   useEffect(() => {
-    const locallyStoredModuleDependencies = localStorage.getItem(
-      'yangModuleDependencies'
-    );
+    const storageKey = currentDeviceId ? `yangModuleDependencies_${currentDeviceId}` : 'yangModuleDependencies';
+    const locallyStoredModuleDependencies = localStorage.getItem(storageKey);
     if (locallyStoredModuleDependencies)
       setModuleDependencies(JSON.parse(locallyStoredModuleDependencies));
-  }, []);
+    else 
+      setModuleDependencies([]);
+  }, [currentDeviceId]);
 
   return (
     <Box>

@@ -1,4 +1,3 @@
-
 from django.contrib import admin
 from django.urls import path
 
@@ -12,4 +11,6 @@ urlpatterns = [
          views.device_schemas, name='device schemas'),
     path('api/device_schema_dependencies',
          views.device_schema_dependencies, name='device schema dependencies'),
+    path('api/device_cleanup',
+         views.device_cleanup, name='device cleanup'),
 ]
