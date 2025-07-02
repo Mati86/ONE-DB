@@ -3,6 +3,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Toaster } from 'react-hot-toast';
 import App from './App';
+import { migrateGlobalSettingsToDevices } from './utils/utils';
+
+// Migrate any existing global settings to device-specific settings
+migrateGlobalSettingsToDevices();
 
 const theme = createTheme({
   typography: {

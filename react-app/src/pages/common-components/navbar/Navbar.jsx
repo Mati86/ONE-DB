@@ -1,4 +1,4 @@
-import { Box, MenuItem, Select, Typography, Chip } from '@mui/material';
+import { Box, MenuItem, Select, Typography, Chip} from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { getCurrentDeviceId, getDevices, setCurrentDeviceId } from '../../../utils/utils';
 
@@ -106,14 +106,7 @@ const Navbar = () => {
               </MenuItem>
             ))}
           </Select>
-        </Box>
-        
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-          }}
-        >
+          
           {selectedDevice && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Chip
@@ -158,6 +151,18 @@ const Navbar = () => {
               }}
             />
           )}
+        </Box>
+
+        {/* logo */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          { 
+          <img 
+            src="/images/logo.png" 
+            alt="ONE Logo" 
+            style={{ height: '60px' }} 
+          />
+          }
+
         </Box>
       </Box>
     </Box>

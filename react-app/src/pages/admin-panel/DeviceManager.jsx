@@ -47,6 +47,7 @@ function DeviceManager({ onDeviceChange }) {
     port: 830,
     username: '',
     password: '',
+    dataRefreshInterval: 3,
   });
 
   function handleAddDevice() {
@@ -57,6 +58,7 @@ function DeviceManager({ onDeviceChange }) {
       port: 830,
       username: '',
       password: '',
+      dataRefreshInterval: 3,
     });
     setDialogOpen(true);
   }
@@ -69,6 +71,7 @@ function DeviceManager({ onDeviceChange }) {
       port: device.credentials.port,
       username: device.credentials.username,
       password: device.credentials.password,
+      dataRefreshInterval: device.dataRefreshInterval || 3,
     });
     setDialogOpen(true);
   }
@@ -112,6 +115,7 @@ function DeviceManager({ onDeviceChange }) {
         username: deviceForm.username,
         password: deviceForm.password,
       },
+      dataRefreshInterval: parseInt(deviceForm.dataRefreshInterval),
     };
 
     if (editingDevice) {
@@ -190,6 +194,7 @@ function DeviceManager({ onDeviceChange }) {
                 <TableCell>IP Address</TableCell>
                 <TableCell>Port</TableCell>
                 <TableCell>Username</TableCell>
+                <TableCell>Refresh Interval</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -200,6 +205,7 @@ function DeviceManager({ onDeviceChange }) {
                   <TableCell>{device.credentials.ip}</TableCell>
                   <TableCell>{device.credentials.port}</TableCell>
                   <TableCell>{device.credentials.username}</TableCell>
+                  <TableCell>{device.dataRefreshInterval || 3}s</TableCell>
                   <TableCell>
                     <IconButton
                       onClick={() => handleEditDevice(device)}
@@ -280,6 +286,18 @@ function DeviceManager({ onDeviceChange }) {
                 onChange={handleFormChange}
                 fullWidth
                 required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                name='dataRefreshInterval'
+                label='Data Refresh Interval (seconds)'
+                type='number'
+                value={deviceForm.dataRefreshInterval}
+                onChange={handleFormChange}
+                fullWidth
+                inputProps={{ min: 1, max: 60 }}
+                helperText="How often to refresh data (1-60 seconds)"
               />
             </Grid>
           </Grid>

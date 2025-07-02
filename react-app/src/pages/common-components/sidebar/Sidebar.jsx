@@ -4,7 +4,6 @@ import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import LabelIcon from '@mui/icons-material/LabelImportant';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
-import SettingsApplicationsIcon from '@mui/icons-material/SettingsApplications';
 import DashboardIcon from '@mui/icons-material/SpaceDashboard';
 import {
   Box,
@@ -54,8 +53,8 @@ const Sidebar = () => {
           color: 'white',
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: 0.5 }}>
-          🚀 ROADM Dashboard
+        <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: 0.5, fontSize: '3rem'}}>
+          ONE
         </Typography>
       </Box>
       <Divider sx={{ borderColor: '#e2e8f0' }} />
@@ -80,27 +79,6 @@ const Sidebar = () => {
                 <DashboardIcon />
               </ListItemIcon>
               <SidebarButtonText text='Dashboard' isActive={isActive('/')} />
-            </ListItemButton>
-          </Link>
-          <Link to='/settings' style={{ textDecoration: 'none' }}>
-            <ListItemButton
-              sx={{
-                mx: 1,
-                borderRadius: 2,
-                mb: 0.5,
-                backgroundColor: isActive('/settings') ? '#dbeafe' : 'transparent',
-                '&:hover': {
-                  backgroundColor: '#f8fafc',
-                  transform: 'translateX(4px)',
-                  transition: 'all 0.2s ease',
-                },
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <ListItemIcon sx={{ color: isActive('/settings') ? '#3b82f6' : '#64748b' }}>
-                <SettingsApplicationsIcon />
-              </ListItemIcon>
-              <SidebarButtonText text='Settings' isActive={isActive('/settings')} />
             </ListItemButton>
           </Link>
           <Link to='/admin' style={{ textDecoration: 'none' }}>

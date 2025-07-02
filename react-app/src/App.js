@@ -12,7 +12,10 @@ import Preamplifier from './pages/monitoring/edfas/preamplifier/PreAmplifier';
 import MultiplexerPorts from './pages/monitoring/multiplexer/multiplexer-ports/MultiplexerPorts';
 import OpticalPort from './pages/monitoring/optical-port/OpticalPort';
 import MuxSettings from './pages/mux-settings/MuxSettings';
-import Settings from './pages/settings/Settings';
+import { migrateGlobalSettingsToDevices } from './utils/utils';
+
+// Migrate any global settings to device-specific settings on app startup
+migrateGlobalSettingsToDevices();
 
 function App() {
   return (
@@ -24,9 +27,6 @@ function App() {
             <Route index element={<Home />} />
             <Route path='admin'>
               <Route index element={<AdminPanel />} />
-            </Route>
-            <Route path='settings'>
-              <Route index element={<Settings />} />
             </Route>
 
             <Route path='monitoring'>

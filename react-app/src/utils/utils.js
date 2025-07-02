@@ -191,6 +191,10 @@ export function updateDevice(deviceId, updatedDevice) {
   if (index !== -1) {
     devices[index] = { ...devices[index], ...updatedDevice };
     saveDevices(devices);
+    // If this is the current device, trigger a refresh
+    if (deviceId === getCurrentDeviceId()) {
+      dispatchDeviceChangeEvent(deviceId);
+    }
   }
 }
 
@@ -209,4 +213,24 @@ export function deleteDevice(deviceId) {
   cleanupDeviceDataAPI(deviceId).catch(error => {
     console.warn('Failed to cleanup device data on backend:', error);
   });
+}
+
+// Migration function to move global settings to device-specific settings
+export function migrateGlobalSettingsToDevices() {
+  const globalInterval = localStorage.getItem('dataRefreshInterval');
+  if (globalInterval) {
+    const devices = getDevices();
+    const intervalInSeconds = parseInt(globalInterval) / 1000;
+    
+    const updatedDevices = devices.map(device => ({
+      ...device,
+      dataRefreshInterval: device.dataRefreshInterval || intervalInSeconds
+    }));
+    
+    if (updatedDevices.length > 0) {
+      localStorage.setItem('devices', JSON.stringify(updatedDevices));
+      localStorage.removeItem('dataRefreshInterval'); // Clean up old setting
+      console.log('Migrated global data refresh interval to device-specific settings');
+    }
+  }
 }
