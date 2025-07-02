@@ -3,7 +3,6 @@ import YangModulesListItem from './YangModulesListItem';
 
 function YangModulesList({
   yangModules,
-  onSaveButtonClick,
   onModuleNameChange,
   onDelete,
 }) {
@@ -14,7 +13,6 @@ function YangModulesList({
           key={yangModule.id}
           yangModuleId={yangModule.id}
           yangModuleName={yangModule.name}
-          onSave={() => onSaveButtonClick(yangModule.id)}
           onChange={onModuleNameChange}
           onDelete={() => onDelete(yangModule.id)}
         />

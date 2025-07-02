@@ -64,17 +64,70 @@ function BoosterConfiguration() {
     }));
   };
 
-  async function handleSave(parameterName) {
+  async function handleSaveAll() {
     try {
-      await configureDeviceData(
-        getConfigurationApiPayloadForEdfa(
-          EDFA_TYPE.Booster,
-          parameterName,
-          form[parameterName],
-          getCurrentDeviceId()
-        )
-      );
-      notifySuccess('Booster configuration successfull');
+      // Configuration fields (non-alarm related)
+      const configFields = [
+        EDFA_PARAMS.CustomName,
+        EDFA_PARAMS.MaintenanceState,
+        EDFA_PARAMS.ControlMode,
+        EDFA_PARAMS.GainSwitchMode,
+        EDFA_PARAMS.TargetGain,
+        EDFA_PARAMS.TargetPower,
+        EDFA_PARAMS.TargetGainTilt,
+        EDFA_PARAMS.LosShutdown,
+        EDFA_PARAMS.ForceApr,
+      ];
+      
+      const fieldsToSave = configFields.filter(key => form[key] !== undefined && form[key] !== '');
+      
+      for (const fieldName of fieldsToSave) {
+        await configureDeviceData(
+          getConfigurationApiPayloadForEdfa(
+            EDFA_TYPE.Booster,
+            fieldName,
+            form[fieldName],
+            getCurrentDeviceId()
+          )
+        );
+      }
+      
+      notifySuccess('All booster configurations saved successfully');
+    } catch (e) {
+      toast.error(e.message);
+    }
+  }
+
+  async function handleSaveAllAlarms() {
+    try {
+      // Alarm-related fields
+      const alarmFields = [
+        EDFA_PARAMS.OpticalLooThreshold,
+        EDFA_PARAMS.OpticalLooHysteresis,
+        EDFA_PARAMS.InputOverloadThreshold,
+        EDFA_PARAMS.InputOverloadHysteresis,
+        EDFA_PARAMS.InputLowDegradeThreshold,
+        EDFA_PARAMS.InputLowDegradeHysteresis,
+        EDFA_PARAMS.OpticalLosThreshold,
+        EDFA_PARAMS.OpticalLosHysteresis,
+        EDFA_PARAMS.OrlThresholdWarningThreshold,
+        EDFA_PARAMS.OrlThresholdWarningHysteresis,
+      ];
+      
+      const fieldsToSave = alarmFields.filter(key => form[key] !== undefined && form[key] !== '');
+      
+      for (const fieldName of fieldsToSave) {
+        await configureDeviceData(
+          getConfigurationApiPayloadForEdfa(
+            EDFA_TYPE.Booster,
+            fieldName,
+            form[fieldName],
+            getCurrentDeviceId()
+          )
+        );
+      }
+      
+      notifySuccess('All booster alarm settings saved successfully');
     } catch (e) {
       toast.error(e.message);
     }
@@ -112,7 +165,6 @@ function BoosterConfiguration() {
                 fullWidth
                 onChange={handleInputChange}
               />
-              <SaveButton onClick={() => handleSave(EDFA_PARAMS.CustomName)} />
             </Grid>
 
             <Grid item xs={12} md={7} display='flex'>
@@ -123,13 +175,11 @@ function BoosterConfiguration() {
                 value={form[EDFA_PARAMS.MaintenanceState] ?? ''}
                 select
                 fullWidth
+                onChange={handleInputChange}
               >
                 <MenuItem value='in-service'>In service</MenuItem>
                 <MenuItem value='out-of-service'>Out of service</MenuItem>
               </TextField>
-              <SaveButton
-                onClick={() => handleSave(EDFA_PARAMS.MaintenanceState)}
-              />
             </Grid>
 
             <Grid item xs={12} md={7} display='flex'>
@@ -145,7 +195,6 @@ function BoosterConfiguration() {
                 <MenuItem value='constant-gain'>Constant gain</MenuItem>
                 <MenuItem value='constant-power'>Constant power</MenuItem>
               </TextField>
-              <SaveButton onClick={() => handleSave(EDFA_PARAMS.ControlMode)} />
             </Grid>
 
             <Grid item xs={12} md={7} display='flex'>
@@ -175,7 +224,6 @@ function BoosterConfiguration() {
                 }}
                 onChange={handleInputChange}
               />
-              <SaveButton onClick={() => handleSave(EDFA_PARAMS.TargetGain)} />
             </Grid>
             <Grid item xs={12} md={7} display='flex'>
               <TextField
@@ -193,7 +241,6 @@ function BoosterConfiguration() {
                 }}
                 onChange={handleInputChange}
               />
-              <SaveButton onClick={() => handleSave(EDFA_PARAMS.TargetPower)} />
             </Grid>
             <Grid item xs={12} md={7} display='flex'>
               <TextField
@@ -210,9 +257,6 @@ function BoosterConfiguration() {
                 InputLabelProps={{
                   shrink: true,
                 }}
-              />
-              <SaveButton
-                onClick={() => handleSave(EDFA_PARAMS.TargetGainTilt)}
               />
             </Grid>
             <Grid
@@ -254,15 +298,25 @@ function BoosterConfiguration() {
           </Grid>
         </Box>
 
+        {/* Save All Button for Main Configuration */}
+        <Box sx={{ mt: 3, mb: 4, display: 'flex', justifyContent: 'center' }}>
+          <SaveButton onClick={handleSaveAll}>Save All Configuration</SaveButton>
+        </Box>
+
         {/* <Divider />
           <ReadOnlyData /> */}
-        <Divider />
+        <Divider sx={{ my: 3 }} />
         <AlarmSettings
           edfaType={EDFA_TYPE.Booster}
           form={form}
-          onSave={handleSave}
           onChange={handleInputChange}
         />
+        
+        {/* Save All Button for Alarm Settings */}
+        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+          <SaveButton onClick={handleSaveAllAlarms}>Save All Alarms</SaveButton>
+        </Box>
+
         {/* <Divider />
           <VoaSettings />
           <Divider />

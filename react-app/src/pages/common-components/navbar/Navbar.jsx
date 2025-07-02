@@ -1,4 +1,4 @@
-import { Box, MenuItem, Select, Typography } from '@mui/material';
+import { Box, MenuItem, Select, Typography, Chip } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { getCurrentDeviceId, getDevices, setCurrentDeviceId } from '../../../utils/utils';
 
@@ -37,25 +37,34 @@ const Navbar = () => {
   return (
     <Box
       sx={{
-        height: '50px',
-        borderBottom: '0.5px solid rgb(231, 228, 228)',
+        height: '60px',
+        background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+        borderBottom: '1px solid #cbd5e1',
         display: 'flex',
         alignItems: 'center',
         fontSize: '14px',
-        color: '#555',
+        color: '#334155',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
       }}
     >
       <Box
         sx={{
           width: '100%',
-          padding: '20px',
+          padding: '0 24px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography variant='body2' color='textSecondary'>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+          <Typography 
+            variant='body2' 
+            sx={{ 
+              color: '#64748b',
+              fontWeight: 500,
+              fontSize: '0.875rem'
+            }}
+          >
             Current Device:
           </Typography>
           <Select
@@ -63,14 +72,37 @@ const Navbar = () => {
             onChange={handleDeviceChange}
             displayEmpty
             size='small'
-            sx={{ minWidth: 200 }}
+            sx={{ 
+              minWidth: 240,
+              backgroundColor: 'white',
+              borderRadius: 2,
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#e2e8f0',
+              },
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#94a3b8',
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#3b82f6',
+              },
+              '& .MuiSelect-select': {
+                padding: '8px 12px',
+              }
+            }}
           >
             <MenuItem value=''>
-              <em>No device selected</em>
+              <em style={{ color: '#94a3b8' }}>No device selected</em>
             </MenuItem>
             {devices.map(device => (
               <MenuItem key={device.id} value={device.id}>
-                {device.name} ({device.credentials.ip})
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    {device.name}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#64748b' }}>
+                    ({device.credentials.ip})
+                  </Typography>
+                </Box>
               </MenuItem>
             ))}
           </Select>
@@ -83,29 +115,49 @@ const Navbar = () => {
           }}
         >
           {selectedDevice && (
-            <Typography variant='body2' color='primary'>
-              Connected to: {selectedDevice.name}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Chip
+                label="Connected"
+                size="small"
+                sx={{
+                  backgroundColor: '#dcfce7',
+                  color: '#16a34a',
+                  fontWeight: 600,
+                  fontSize: '0.75rem',
+                  height: '24px',
+                  '& .MuiChip-label': {
+                    padding: '0 8px',
+                  }
+                }}
+              />
+              <Typography 
+                variant='body2' 
+                sx={{ 
+                  color: '#334155',
+                  fontWeight: 600,
+                  fontSize: '0.875rem'
+                }}
+              >
+                {selectedDevice.name}
+              </Typography>
+            </Box>
           )}
-          {/* <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              marginRight: 20,
-              position: 'relative',
-            }}
-          >
-            <img
-              src='https://images.pexels.com/photos/941693/pexels-photo-941693.jpeg?auto=compress&cs=tinysrgb&dpr=2&w=500'
-              alt=''
-              style={{
-                width: '30px',
-                height: '30px',
-                borderRadius: '50%',
-                position: 'absolute',
+          {!selectedDevice && (
+            <Chip
+              label="Disconnected"
+              size="small"
+              sx={{
+                backgroundColor: '#fef2f2',
+                color: '#dc2626',
+                fontWeight: 600,
+                fontSize: '0.75rem',
+                height: '24px',
+                '& .MuiChip-label': {
+                  padding: '0 8px',
+                }
               }}
             />
-          </Box> */}
+          )}
         </Box>
       </Box>
     </Box>

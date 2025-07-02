@@ -1,10 +1,8 @@
 import { Grid, InputAdornment, TextField } from '@mui/material';
-import SaveButton from './SaveButton';
 
 function PowerAlarmSettingField({
   onChange,
   name,
-  onSave,
   value,
   label,
   unit = 'dB',
@@ -26,7 +24,6 @@ function PowerAlarmSettingField({
         }}
         onChange={onChange}
       />
-      <SaveButton onClick={onSave} />
     </Grid>
   );
 }

@@ -97,30 +97,6 @@ function AddDependenciesSection({ yangModules, deviceCredentials, currentDeviceI
     }
   }
 
-  async function saveModuleDependency(dependencyId) {
-    const dependency = moduleDependencies.find(
-      dependency => dependency.id === dependencyId
-    );
-    try {
-      await saveYangModuleDependencies({
-        schemas: [
-          {
-            name: getYangModule(dependency.moduleId).name,
-            dependencies: dependency.dependencies.map(
-              dependency => getYangModule(dependency).name
-            ),
-            dependency_name: dependency.dependencyName,
-          },
-        ],
-        deviceId: currentDeviceId,
-      });
-      saveYangModuleDependenciesToLocalStorage();
-      notifySuccess('Module Dependency Saved');
-    } catch (e) {
-      toast.error(e.message);
-    }
-  }
-
   function saveYangModuleDependenciesToLocalStorage() {
     const storageKey = currentDeviceId ? `yangModuleDependencies_${currentDeviceId}` : 'yangModuleDependencies';
     localStorage.setItem(
@@ -163,7 +139,6 @@ function AddDependenciesSection({ yangModules, deviceCredentials, currentDeviceI
           onModuleChange={handleModuleChange}
           onDependencyNameChange={handleDependencyNameChange}
           onModuleDependenciesChange={handleModuleDependenciesChange}
-          onSaveButtonClick={saveModuleDependency}
           onDependencyDelete={handleDependencyDelete}
         />
         {!!moduleDependencies.length && (

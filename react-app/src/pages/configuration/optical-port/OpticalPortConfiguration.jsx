@@ -46,17 +46,23 @@ function OpticalPortConfiguration() {
     }));
   };
 
-  async function handleSave(parameterName) {
+  async function handleSaveAll() {
     try {
-      await configureDeviceData(
-        getConfigurationApiPayloadForPort(
-          port,
-          parameterName,
-          form[parameterName],
-          currentDeviceId
-        )
-      );
-      notifySuccess('Port configuration successfull');
+      // Save all fields with values
+      const fieldsToSave = Object.keys(form).filter(key => form[key] !== undefined && form[key] !== '');
+      
+      for (const fieldName of fieldsToSave) {
+        await configureDeviceData(
+          getConfigurationApiPayloadForPort(
+            port,
+            fieldName,
+            form[fieldName],
+            currentDeviceId
+          )
+        );
+      }
+      
+      notifySuccess('All port configurations saved successfully');
     } catch (e) {
       toast.error(e.message);
     }
@@ -99,9 +105,6 @@ function OpticalPortConfiguration() {
               fullWidth
               onChange={handleInputChange}
             />
-            <SaveButton
-              onClick={() => handleSave(OPTICAL_PORT_PARAMS.CustomName)}
-            />
           </Box>
 
           <Box display='flex' sx={{ mt: 2 }}>
@@ -117,9 +120,6 @@ function OpticalPortConfiguration() {
               <MenuItem value='in-service'>In service</MenuItem>
               <MenuItem value='out-of-service'>Out of service</MenuItem>
             </TextField>
-            <SaveButton
-              onClick={() => handleSave(OPTICAL_PORT_PARAMS.MaintenanceState)}
-            />
           </Box>
         </Box>
         {portType === PORT_TYPE.Multiplexer && (
@@ -128,10 +128,14 @@ function OpticalPortConfiguration() {
             <AlarmSettings
               form={form}
               onChange={handleInputChange}
-              onSave={handleSave}
             />
           </>
         )}
+        
+        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+          <SaveButton onClick={handleSaveAll}>Save All</SaveButton>
+        </Box>
+        
         {/* 
         <Divider />
         <LLDPSettings /> */}

@@ -29,25 +29,6 @@ function AddYangModulesSection({
     });
   }
 
-  async function saveYangModule(yangModuleId) {
-    try {
-      await saveYangModules({
-        schemas: [
-          {
-            name: yangModules.find(yangModule => yangModule.id === yangModuleId)
-              .name,
-          },
-        ],
-        credentials: deviceCredentials,
-        deviceId: currentDeviceId,
-      });
-      saveYangModulesToLocalStorage();
-      notifySuccess('Yang Module Saved');
-    } catch (e) {
-      toast.error(e.message);
-    }
-  }
-
   async function saveAllYangModules() {
     try {
       await saveYangModules({
@@ -94,7 +75,6 @@ function AddYangModulesSection({
         <YangModulesList
           yangModules={yangModules}
           onModuleNameChange={handleModuleNameChange}
-          onSaveButtonClick={saveYangModule}
           onDelete={handleYandModuleDelete}
         />
         {!!yangModules.length && (

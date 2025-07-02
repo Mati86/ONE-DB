@@ -58,17 +58,64 @@ function PreamplifierConfiguration() {
     }));
   };
 
-  async function handleSave(parameterName) {
+  async function handleSaveAll() {
     try {
-      await configureDeviceData(
-        getConfigurationApiPayloadForEdfa(
-          EDFA_TYPE.Preamplifier,
-          parameterName,
-          form[parameterName],
-          getCurrentDeviceId()
-        )
-      );
-      notifySuccess('Preamplifier configuration successfull');
+      // Configuration fields (non-alarm related)
+      const configFields = [
+        EDFA_PARAMS.CustomName,
+        EDFA_PARAMS.MaintenanceState,
+        EDFA_PARAMS.ControlMode,
+        EDFA_PARAMS.GainSwitchMode,
+        EDFA_PARAMS.TargetGain,
+        EDFA_PARAMS.TargetPower,
+        EDFA_PARAMS.TargetGainTilt,
+        EDFA_PARAMS.LosShutdown,
+        EDFA_PARAMS.ForceApr,
+      ];
+      
+      const fieldsToSave = configFields.filter(key => form[key] !== undefined && form[key] !== '');
+      
+      for (const fieldName of fieldsToSave) {
+        await configureDeviceData(
+          getConfigurationApiPayloadForEdfa(
+            EDFA_TYPE.Preamplifier,
+            fieldName,
+            form[fieldName],
+            getCurrentDeviceId()
+          )
+        );
+      }
+      
+      notifySuccess('All preamplifier configurations saved successfully');
+    } catch (e) {
+      toast.error(e.message);
+    }
+  }
+
+  async function handleSaveAllAlarms() {
+    try {
+      // Alarm-related fields
+      const alarmFields = [
+        EDFA_PARAMS.OpticalLooThreshold,
+        EDFA_PARAMS.OpticalLooHysteresis,
+        EDFA_PARAMS.InputOverloadThreshold,
+        EDFA_PARAMS.InputOverloadHysteresis,
+      ];
+      
+      const fieldsToSave = alarmFields.filter(key => form[key] !== undefined && form[key] !== '');
+      
+      for (const fieldName of fieldsToSave) {
+        await configureDeviceData(
+          getConfigurationApiPayloadForEdfa(
+            EDFA_TYPE.Preamplifier,
+            fieldName,
+            form[fieldName],
+            getCurrentDeviceId()
+          )
+        );
+      }
+      
+      notifySuccess('All preamplifier alarm settings saved successfully');
     } catch (e) {
       toast.error(e.message);
     }
@@ -106,7 +153,6 @@ function PreamplifierConfiguration() {
                 fullWidth
                 onChange={handleInputChange}
               />
-              <SaveButton onClick={() => handleSave(EDFA_PARAMS.CustomName)} />
             </Grid>
 
             <Grid item xs={12} md={7} display='flex'>
@@ -117,13 +163,11 @@ function PreamplifierConfiguration() {
                 value={form[EDFA_PARAMS.MaintenanceState] ?? ''}
                 select
                 fullWidth
+                onChange={handleInputChange}
               >
                 <MenuItem value='in-service'>In service</MenuItem>
                 <MenuItem value='out-of-service'>Out of service</MenuItem>
               </TextField>
-              <SaveButton
-                onClick={() => handleSave(EDFA_PARAMS.MaintenanceState)}
-              />
             </Grid>
 
             <Grid item xs={12} md={7} display='flex'>
@@ -139,7 +183,6 @@ function PreamplifierConfiguration() {
                 <MenuItem value='constant-gain'>Constant gain</MenuItem>
                 <MenuItem value='constant-power'>Constant power</MenuItem>
               </TextField>
-              <SaveButton onClick={() => handleSave(EDFA_PARAMS.ControlMode)} />
             </Grid>
 
             <Grid item xs={12} md={7} display='flex'>
@@ -150,6 +193,7 @@ function PreamplifierConfiguration() {
                 value={form[EDFA_PARAMS.GainSwitchMode] ?? ''}
                 select
                 fullWidth
+                onChange={handleInputChange}
               >
                 <MenuItem value='low-gain'>Low gain</MenuItem>
                 <MenuItem value='high-power'>High power</MenuItem>
@@ -169,7 +213,6 @@ function PreamplifierConfiguration() {
                 }}
                 onChange={handleInputChange}
               />
-              <SaveButton onClick={() => handleSave(EDFA_PARAMS.TargetGain)} />
             </Grid>
             <Grid item xs={12} md={7} display='flex'>
               <TextField
@@ -187,7 +230,6 @@ function PreamplifierConfiguration() {
                 }}
                 onChange={handleInputChange}
               />
-              <SaveButton onClick={() => handleSave(EDFA_PARAMS.TargetPower)} />
             </Grid>
             <Grid item xs={12} md={7} display='flex'>
               <TextField
@@ -204,9 +246,6 @@ function PreamplifierConfiguration() {
                 InputLabelProps={{
                   shrink: true,
                 }}
-              />
-              <SaveButton
-                onClick={() => handleSave(EDFA_PARAMS.TargetGainTilt)}
               />
             </Grid>
             <Grid
@@ -248,15 +287,24 @@ function PreamplifierConfiguration() {
           </Grid>
         </Box>
 
+        {/* Save All Button for Main Configuration */}
+        <Box sx={{ mt: 3, mb: 4, display: 'flex', justifyContent: 'center' }}>
+          <SaveButton onClick={handleSaveAll}>Save All Configuration</SaveButton>
+        </Box>
+
         {/* <Divider />
           <ReadOnlyData /> */}
-        <Divider />
+        <Divider sx={{ my: 3 }} />
         <AlarmSettings
           edfaType={EDFA_TYPE.Preamplifier}
           form={form}
-          onSave={handleSave}
           onChange={handleInputChange}
         />
+        
+        {/* Save All Button for Alarm Settings */}
+        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+          <SaveButton onClick={handleSaveAllAlarms}>Save All Alarms</SaveButton>
+        </Box>
         {/* <Divider />
           <VoaSettings />
           <Divider />

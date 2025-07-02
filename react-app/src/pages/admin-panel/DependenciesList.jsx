@@ -10,14 +10,12 @@ import {
 } from '@mui/material';
 import React from 'react';
 import { DeleteButton } from '../common-components/DeleteButton';
-import SaveButton from './SaveButton';
 
 function DependenciesList({
   onModuleChange,
   onDependencyNameChange,
   moduleDependencies,
   ModuleSelectOptions,
-  onSaveButtonClick,
   onDependencyDelete,
   onModuleDependenciesChange,
 }) {
@@ -77,7 +75,6 @@ function DependenciesList({
               lg={2}
               xs={4}
             >
-              <SaveButton onClick={() => onSaveButtonClick(dependency.id)} />
               <DeleteButton onClick={() => onDependencyDelete(dependency.id)} />
             </Grid>
           </Grid>
