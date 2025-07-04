@@ -22,15 +22,19 @@ def get_device_connection(device_credentials):
         hostkey_verify=False
     )
 
-# Legacy fallback for backward compatibility (deprecated)
-router = {"ip": "10.3.12.101",
-          "port": 830,
-          "user": "superuser",
-          "pass": "Sup%9User"}
+# REMOVED: Legacy fallback code that was causing startup failures
+# The code below was trying to connect during module import, which is incorrect
+# Device connections should only be created when explicitly requested by the frontend
 
-device_connection_manager = get_device_connection({
-    'ip': router["ip"],
-    'port': router["port"],
-    'username': router["user"],
-    'password': router["pass"]
-})
+# Legacy fallback for backward compatibility (deprecated) - COMMENTED OUT
+# router = {"ip": "10.3.12.101",
+#           "port": 830,
+#           "user": "superuser",
+#           "pass": "Sup%9User"}
+
+# device_connection_manager = get_device_connection({
+#     'ip': router["ip"],
+#     'port': router["port"],
+#     'username': router["user"],
+#     'password': router["pass"]
+# })
