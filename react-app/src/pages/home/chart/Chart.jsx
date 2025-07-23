@@ -11,7 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 
-function Chart({ aspect, title, data, XInterval }) {
+function Chart({ aspect, title, data, XInterval, dataKeys }) {
   return (
     <Box
       sx={{
@@ -24,8 +24,14 @@ function Chart({ aspect, title, data, XInterval }) {
       </Typography>
       <ResponsiveContainer aspect={aspect}>
         <LineChart data={data}>
-          <Line type='monotone' dataKey='input-power' stroke='green' />
-          <Line type='monotone' dataKey='output-power' stroke='#8884d8' />
+          {dataKeys.map(dataKey => (
+            <Line
+              key={dataKey.name}
+              type='monotone'
+              dataKey={dataKey.name}
+              stroke={dataKey.color}
+            />
+          ))}
           <CartesianGrid stroke='#ccc' strokeDasharray='5 5' />
           <XAxis
             dataKey='name'

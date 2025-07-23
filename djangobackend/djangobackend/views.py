@@ -65,14 +65,14 @@ def device_schemas(request):
     except Exception as e:
         return Response({"error": {"message": f"Schema generation error: {str(e)}"}}, status=500)
 
-
+        
 def get_subrequests_array(request):
     if type(request) == list:
-        return request
+        # For list requests, ensure each item has a 'key' field
+        return [item if 'key' in item else {**item, 'key': f'auto-key-{i}'} for i, item in enumerate(request)]
     if type(request) == dict:
-        request['key'] = 'only-key'
-        return [request]
-
+        # For single dict requests, add a 'key' field
+        return [{**request, 'key': 'only-key'}]
 
 @api_view(['POST'])
 def device_data(request):
@@ -88,6 +88,9 @@ def device_data(request):
         if not is_valid:
             return Response({"error": {"message": error_message}}, status=400)
         
+        # Check if original data_params was a single dict (not a list)
+        is_single_request = type(data_params) == dict
+        
         sub_requests = get_subrequests_array(data_params)
         # The responses list will hold response for each subrequest where each subrequest
         # is identified by a 'key'
@@ -100,7 +103,7 @@ def device_data(request):
                 try:
                     edit_data(device_credentials, component,
                               parameter, sub_request['value'], query, device_id)
-                    if type(data_params) == dict:
+                    if is_single_request:
                         return Response({"data": {"success": True}})
                     responses.append(
                         {"key": sub_request['key'], "data": {"success": True}})
@@ -111,7 +114,7 @@ def device_data(request):
                 try:
                     data = get_data(device_credentials,
                                     component, parameter, query, device_id)
-                    if type(data_params) == dict:
+                    if is_single_request:
                         return Response({"data": data})
                     responses.append({"key": sub_request['key'], "data": data})
                 except Exception as e:

@@ -21,12 +21,12 @@ function BoosterChart() {
   const data = useApiPoll(pollInterval, apiPayload);
 
   useEffect(() => {
-    if (data) {
+    if (data && data[0]) {
       setMonitoredData(prev => {
         let newData = [...prev];
         newData.unshift({
           name: 0,
-          ...data.data,
+          ...data[0].data,
         });
         return newData.slice(0, 7).map((data, index) => {
           return {
@@ -44,6 +44,10 @@ function BoosterChart() {
       data={monitoredData ?? []}
       aspect={2 / 1}
       XInterval={pollInterval / 1000}
+      dataKeys={[
+        { name: EDFA_PARAMS.InputPower, color: 'green' },
+        { name: EDFA_PARAMS.OutputPower, color: '#8884d8' },
+      ]}
     />
   );
 }
