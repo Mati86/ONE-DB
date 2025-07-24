@@ -65,7 +65,7 @@ def validate_device_operation(device_credentials, device_id=None):
     Returns:
         tuple: (is_valid, error_message)
     """
-    if not validate_device_credentials(device_credentials):
+    if device_credentials and not validate_device_credentials(device_credentials):
         return False, "Invalid device credentials"
     
     if device_id and not validate_device_id(device_id):
