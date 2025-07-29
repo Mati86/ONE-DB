@@ -42,6 +42,7 @@ function getApiPayload(portNumbers) {
 
 function MuxChart() {
   const [selectedPortNumbers, setSelectedPortNumbers] = useState(['4101']);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentData, setCurrentData] = useState([]);
   const pollInterval = useDataPollInterval();
   const currentDeviceId = getCurrentDeviceId();
@@ -55,6 +56,7 @@ function MuxChart() {
 
   function handlePortNumbersChange(e) {
     setSelectedPortNumbers(e.target.value);
+    setDropdownOpen(false);
   }
 
   useEffect(() => {
@@ -114,6 +116,9 @@ function MuxChart() {
           label='Ports'
           onChange={handlePortNumbersChange}
           multiple
+          open={dropdownOpen} 
+          onOpen={() => setDropdownOpen(true)} 
+          onClose={() => setDropdownOpen(false)}
         >
           {MUX_OPTICAL_PORT_NUMBERS.map(portNumber => (
             <MenuItem key={portNumber} value={portNumber}>

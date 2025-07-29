@@ -42,6 +42,7 @@ function getApiPayload(portNumbers) {
 
 function DemuxChart() {
   const [selectedPortNumbers, setSelectedPortNumbers] = useState(['5201']);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentData, setCurrentData] = useState([]);
   const pollInterval = useDataPollInterval();
   const currentDeviceId = getCurrentDeviceId();
@@ -55,6 +56,7 @@ function DemuxChart() {
 
   function handlePortNumbersChange(e) {
     setSelectedPortNumbers(e.target.value);
+    setDropdownOpen(false); // Close dropdown after selection
   }
 
   useEffect(() => {
@@ -109,6 +111,9 @@ function DemuxChart() {
           label='Ports'
           onChange={handlePortNumbersChange}
           multiple
+          open={dropdownOpen}
+          onOpen={() => setDropdownOpen(true)}
+          onClose={() => setDropdownOpen(false)}
         >
           {DEMUX_OPTICAL_PORT_NUMBERS.map(portName => (
             <MenuItem key={portName} value={portName}>
