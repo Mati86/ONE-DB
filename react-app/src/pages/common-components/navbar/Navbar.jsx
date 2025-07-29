@@ -154,16 +154,17 @@ const Navbar = () => {
         </Box>
 
         {/* logo */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          { 
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <img 
             src="/images/logo.png" 
             alt="ONE Logo" 
-            style={{ height: '60px' }} 
-          />
-          }
-
-        </Box>
+            style={{ 
+            height: '200px', 
+            width: 'auto',
+            marginRight: '-50px' // Adjust this value as needed
+        }}
+  />
+</Box>
       </Box>
     </Box>
   );
