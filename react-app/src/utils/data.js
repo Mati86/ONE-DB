@@ -4,6 +4,13 @@ export const DEVICE_SCHEMA_DEPENDENCIES_URL =
   'http://localhost:8000/api/device_schema_dependencies';
 export const DEVICE_CLEANUP_URL = 'http://localhost:8000/api/device_cleanup';
 
+// Redis API endpoints
+export const REDIS_MONITORING_URL = 'http://localhost:8000/api/redis/monitoring';
+export const REDIS_RUNNING_CONFIG_URL = 'http://localhost:8000/api/redis/running_config';
+export const REDIS_OPERATIONAL_CONFIG_URL = 'http://localhost:8000/api/redis/operational_config';
+export const REDIS_DEVICE_STATUS_URL = 'http://localhost:8000/api/redis/device_status';
+export const REDIS_DEVICE_SUMMARY_URL = 'http://localhost:8000/api/redis/device_summary';
+
 export const API_OPERATIONS = {
   Config: 'config',
   Read: 'read',

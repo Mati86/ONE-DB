@@ -1,20 +1,163 @@
-## Frontend
+# ROADM Dashboard
 
-The frontend is written in React. Go to the **_react-app_** folder. Run command `npm install` to install all dependencies. After that, run command `npm run dev` to start the react server on http://localhost:3000. Navigate to http://localhost:3000, you'll see your react-app up and running.
+A comprehensive dashboard for ROADM (Reconfigurable Optical Add-Drop Multiplexer) device management, monitoring, and configuration.
 
-## Backend
+## Features
 
-The backend is written in Django. go to the **_djangobackend_** directory. You'll first need to install django and some other dependencies. Run these commands:
+- Real-time device monitoring
+- Configuration management
+- EDFA (Erbium-Doped Fiber Amplifier) control
+- Optical port management
+- Historical data visualization
+- Redis-based caching system
 
-- `pip install django`
-- `pip install django-cors-headers`
-- `pip install ncclient`
-- `pip install djangorestframework`
-- `pip install lxml`
-- `pip install pyang`
+## Quick Start
 
-After installation is complete, run `python manage.py runserver` command. This will start the server at http://localhost:8000.
+### Option 1: Using Docker (Recommended)
 
-## Architecture Diagram
+1. **Start Redis with GUI using Docker:**
+   ```bash
+   # Windows
+   start-redis-docker.bat
+   
+   # Linux/Mac
+   docker-compose up -d
+   ```
 
-[Link to Architecture Diagram](https://viewer.diagrams.net/?tags=%7B%7D&highlight=0000ff&edit=_blank&layers=1&nav=1&title=architecture%20diagram.drawio#R7V1bc%2BI4Fv41qdp9SErynUeSuDOpSUiGZLqnn6YMCOJtg1nj3PbXr2RLvsgSlo1NIJl%2B6IBsbKNzznfuhxP9Yvl2FXnrp9twhoITDczeTvTLE02DFgD4D1l5T1cchy4sIn9GT8oXHvz%2FIbrITnv2Z2hTOjEOwyD21%2BXFabhaoWlcWvOiKHwtnzYPg%2FJd194CVRYepl5QXf3hz%2BInugqtQX7gN%2BQvnuitHc1OD0y86a9FFD6v6P1W4QqlR5Yeuwz9jpsnbxa%2BFpZ090S%2FiMIwTl8t3y5QQLaV7Vj6uW%2BSo9kjR2gVq3xASz%2Fw4gXP9FvT54rf2TZsXv1l4OFvoJ9nTwvJmzgKf6GLMAij5ET94gLgf%2FjI3A%2BCwvo8%2BUfWw1VcWDc02z4%2Fx%2Bte4C9WeC1K9xJf2Ytiyg%2FketMwCLz1xp8EbCW9N6OKjleqX5zuxQuKYvRWWKIbcYXCJYqjd3wKPcroStnVNtK3rzntB4w1n4pkNyzKc5TfFtmV843HL%2Bjei%2Blg2x0SAgAZIabTwaC3DdeabrhmgNKOs40s7LjhCHbcNo3dd%2FyP8fj25%2FzXZHNlo9vr71f3q5F1CiGsp4O3WadwM%2FffEL7a%2BRpFPr4%2FItuMb4LxCd3nS%2BdP8TKgpGIbP8WblhzLCEk2eeZtnsgFkzf%2BMoEn9vfSXy7wVwr8Cf7fnyzJ%2F6t55GHCPE%2Fj5whVFv7eoOjFn6LN2eZlgS%2BUAFJyefIkgTdBwXkGVCJxrfCVlfwTcgPHaRfawNQu8foi8mY%2BysU%2BgcIUCSi%2FQWMLMlSZLBMUZS6DA7PEZaYFKmwGLQGbZYu7sJnmtBNsICJAti8fgbDsKW%2F8FaJMJKFuF1TjoEEX0KwD6ohBgCnnbTRj4rkfMJDRVSLFMzT3noOYEzSN3GLtTf3V4jFcU6rK4WWGXkJsabEXFEUEsO80pa0OyhKpwyp1bRHu90ZxXe9QSgcDABI1qyKlOal6UsotqFMmzqBCm0w4i8TBxlFf1HFExpGV8XeJTNZ%2Fn0N24HST7N4QnwCN9VuyP%2Bx44jcw0uSLWMdNp8RxyZesBfk7dof4RMDuO4nYgfvhz5s7ciw9gL9h%2Bkzp0QoXYSLENTBASOVjN2RIDyz92Yx8%2FDxC%2BAt5Of3Xob%2BKk902z09Mom695zjcUHGvsCbTvQWulAJ2jZiom3hlZsKiXjWqBcxk9ibpzBiQ85KQLaDtOJOJlC1G7uPF3ejbNu7wlhhyz1eTzTr9OHfilTtyx8PHu7EqI1Hdgg%2B9PvkxesDATo68Yl%2B8zF8cCk1naOJMRLilW%2FpAn%2FXKDmXct6vMkOneEu4PeuMGqyU3WJaIGwgPXF%2F9OXaPiyWIXzidfhBLQFiGCGh9NFdoQGT%2F1XMF1fsVrmCfxbbXqqWuKl9owi%2F4bOHncHRVz1j3w%2FGDO66uF%2FjMF6xVbovX0u9UWd7KpjXM2YUNkykVpnesajAHAgFTGb0pHpUIT2EXFPxztJoNSZiT2A6Bt9n403Txmx%2Bwq%2BB31IIkbvt%2FUBy%2F0%2FfEUsBLYRQ%2FhYtw5QU3YeIT5GYDsyuhwF%2FPYwlCC9iySCywCjQzEzkzQ%2BA4EumxZwDv0TbvEc1KAdsq9QvUFTn0bC1CgRf7L%2BUwr4ji9A73xM4qIJZeDhRq0ClfYhM%2BR1NEP1UMvnIX4k1tk3dwsAewQHHlQpjq3nvhNGoHKj%2BwAUCj5%2BLOxy%2FSJ8ilIaPBLgKiECk5UgFBb378F3l9Zpv07U%2F2APj15VvhvMt3mVR9%2ByYJ6zpTlKhvgVQhz5okITu8HL2nz4CVOlv4mSwAkJ2RP0ry7r34rhDGSBblgpry7TZiszjrgYi0ZsIzW9ccoJvANiFm%2BZIA6MA8A4ZmmTaJvRgGF35WlndDEomskffORMwRiVi9YTOfJ4xX9J3bGzFFG3lnb5qwzw0Bgv5calXL15YZKVmCkt7mpJjpExkvp1gibS5EZnbD5nrpoqeQY%2BRwPt%2BgXlhPA6IIW7MYDqaCWgxH5qxj1hu5Fw0cKhqsUQ2jFD2sXB9oLMHxQC8MtzFkhXXlKNvAHK443h9uDpsKEdcvEGP3Yg%2F%2FmQbh80waYG9Ob51lUlnlRTW%2Bbu416maJPOpPZtsVDDtwxsw8RdNuJ4epYNoNTKds2ll6Zut1Y9qlto6KZNcbgSwWeyBGoO6UpYbYyS3tPC6kBSxi%2BO%2FV1DM%2FrzdVkR6i7xOoLkiCWZQDWCMDcnavZ2LG7ofCxCyozoITA9COiXW7LA1Q36%2Bzotmi2Pyn5%2BAsUmBaWkGjEJ8gMSTlSoW84XG86PWbdhOR6FwtMI%2B%2FXqJYsP9QJIqP0jktJYqF0fiwWtfhPs0pW%2Fushk4u6WDb%2Bf2E%2B8QVjzsn9blEScSvtMnxPlz85t4OpT7jp8r7t%2FAtuVSLISivExVx9uZsaKDKWQ%2Fu%2BDvJeH1S%2F15QP7Vnd95SqJs9UmUtdvDshh7eTsH7XfTuodmnJu8bcWl8ZSeL01ranu1TCLV6lleuGZSX7H9I7wT7ag1K%2BcvEMKwzs4pJrG6%2FVGWta32BEtw95iw1MS7d79cXJIeRllyA27tL90bVGDiUDgJvvQ6wlor9cEUKfZf%2BNApp1wCNRh5Om4C2RQiqDFwjsuqRVD4kVLVtNDlWds%2FShoJTLNScBRYqqzduT6HBWgw4pagUdQGOUXIyzwBo5WgW3OCC1t2eL5eiWJe%2BKeOgJtp0W6h9R21qci6lbXG9aKra1OT7Lfimto58U0P8vP1Wlhi1rqaiP7iDvrhyH%2FHhzJUUVuh9Eh9yV%2BMhY%2BK6ClDe4usQZhWi5%2FuGWelGHwgWWRyC2C2hyOAuZPcERZLb9AxFAykUdVYe3CrG5Y4ui%2FgkrwwWBb%2BEJ5ZLg78IlJl8oYUAyvR9RsMgs08%2FYWRGnkbvBCv7LCF2OLCEbcGSC6dYPYGlBsUPLI3OQPFz9ZtTsOTtPHtBV1nzYIqudW0ZN9ff3erqw%2BPw0X3oHIAPqHIyQ6guKicNRy9bk7ATgT2F5bT6KRe06rNy0pAytXLlZF0U65jLIZvr6DIpsybAD8ueaEBuFW6DGwI2Iri5u3dHJ0kH4o%2B78e%2FXSUuYBCZm%2FouQgVp0seVTj07p0xLW81d%2B7HuB8JLu6Op6RGKo%2F7obuf%2Bu7ypLHrZV2vUjWDZA87gbhuWxR1C9qxmCMCTkCww6dJBF%2Bb5D8GOGRIeCv27lsfiv7aDYvIeiVdFP1JHfW6xFU0kdN4u15NFjAIrxY1IOy4qq1GuolPvnM%2B%2BjuzJEthOfN4LNF0WZbSPYkLtQVs3bdTMlH3IH%2B%2FBsmL%2FY0EKoOiQ74DKNEdGRF0fbqZUDThf%2BBuTLZDuRClgG6cz72IO7YSnEixrCcQ6Hll3qT4BntelBZfTNCmwK6K%2BzjGGK%2FobuNEZ%2FxTrYLwDURrl50HJaFu5AfsBUX0DN3cey9wHU9gcH%2BKu9uiXw%2FjG%2BfnQV0PvYgkg5bHUC6oZl94DqWnkMw15R%2FQtNH6loAqZmMkWgA72xItgF81sgeZ%2FJB65iW9faJh%2B4EkyLv1BnDQ1cqadTk3xwxM%2FVc%2FJBPlzhAJC%2FLvlw9zu%2Bbt4Znx9wx%2BMtDfPHn37IofGA0w%2FcNXVu4FB%2FigM68pTa3hzPBvUIXySK53BpX1NQmNpXxZTQwuX2Xbnu%2Fdh%2FMwACTgdCwawFqNsCUnRBi4HCFA1iwq0FVlTDeRdFolQ3LmOKnUGU42zBdm4zjXbaTFGildvMQ6ncX%2FqbKb4dFrHwmZTubzCCkR1uMuufwtFBjvkfqM8RLTWYVDkDmh1whgLk7UXMpNvS3FbhfFHBgP2%2B5AwK56v%2BI2gfI2gy4P4QQYOgmgysGxg3GpHGqwNlHzrgCZMT%2FR2hNTYX4zB6%2F9rM05v%2Bro52v70bXSfz3v7hnMPiHKm9KFVY%2FNBdVha3B8aSFG05Fd4hUQ1WI5THNt18lQtdCuOfgjhpgce66Yxj21%2BMXTLxKWamlCd0Kcc3dvydls77cvL9HOh2cUfPANze4s%2BPavOQMxcO0c86eAQt%2FjbyLAR4qJDJUSGTajeqLFELaMMqUzBG6Weib4%2FpSgi4%2Fh6LL4ZTjXJbfCm7ozbKrXG%2BUuMqSxzaGd9vR5LVS5N8s6o9%2BksXLj57a%2BnecUb3mv8QJZe5zmYLFy1w0W8w9dcQ6SjERo40f5hlCQvon4G9OD2YwXARg8EZ6WRo0ewuT2AqQbR6nQkD8wPJQxpaRwgNAZfRtBUHqzeFaD7sbtOp1rIHq4Tpze2T2PjzWctBvxpg0K49%2FgB%2B7qagK473120aqwe%2B5y%2BzGz6ugcVUiOi1tct1kxVrsEGYYHsZn7JhnhVs726Yb5%2B9aViZgZ4N82yjKTo22dvMX%2B7TZM9cagaXGmdpK5vsnO3v9DRpE2vZ8hMb2%2FHd4H%2Fweh%2BDNs1qSHWvdSk1v6g5dv%2F40314%2FBrtOs1dAe6XG0STHkXzBHps11HIhR2rJ1AYZAVKiA3OHDjoxLbfMqLg8C12i7d%2FtdYWO9c2oRv9BFUGmviJZQ%2FGn2%2BY%2B4Bo4YyOA4BoWjRetaXTUQWCA0rTCo6pOLCzuhZi9PG%2FMMGmCOwolmUbhPvRih6Lyh156PAAKl4F3PmFi1yPgY9Pba182Wxy3z6YWSHC2daFtYxiso7sYFe5pSxU2IsLK7VRRP7moXiRkMND6HBMpDwTk59oxw%2Fp6syL5G4Et9so%2FHPBvZgo1eKKg8B62tBW196g5mUeNcRnANYFxDu2VW73PN2xkWEXBMdvo5BQPT898tZPt%2BGM7Lv7fw%3D%3D)
+2. **Access Redis GUI:**
+   - Open your browser and go to: http://localhost:8081
+   - This provides a web interface to view and manage Redis data
+
+3. **Start Django Backend:**
+   ```bash
+   cd ONE-FE/djangobackend
+   pip install -r requirements.txt
+   python manage.py runserver
+   ```
+
+4. **Start React Frontend:**
+   ```bash
+   cd ONE-FE/react-app
+   npm install
+   npm start
+   ```
+
+### Option 2: Manual Installation
+
+1. **Install Redis Server:**
+   ```bash
+   # Windows: Download from https://github.com/microsoftarchive/redis/releases
+   # Linux: sudo apt-get install redis-server
+   # macOS: brew install redis
+   ```
+
+2. **Start Redis Server:**
+   ```bash
+   redis-server
+   ```
+
+3. **Install Python Dependencies:**
+   ```bash
+   cd ONE-FE/djangobackend
+   pip install -r requirements.txt
+   ```
+
+4. **Start Django Backend:**
+   ```bash
+   python manage.py runserver
+   ```
+
+5. **Start React Frontend:**
+   ```bash
+   cd ONE-FE/react-app
+   npm install
+   npm start
+   ```
+
+## Redis Integration
+
+The project uses Redis for real-time data caching and configuration management:
+
+- **Database 0**: Monitoring data (real-time device parameters)
+- **Database 1**: Running configuration (user-set configurations)
+- **Database 2**: Operational configuration (device actual configurations)
+
+### Redis GUI Access
+
+When using Docker, you can access the Redis GUI at: http://localhost:8081
+
+This allows you to:
+- View all Redis databases and keys
+- Monitor real-time data
+- Inspect configuration values
+- Debug data flow
+
+## Project Structure
+
+```
+ONE-FE/
+├── djangobackend/          # Django REST API backend
+├── react-app/              # React frontend
+├── docker-compose.yml      # Docker setup for Redis
+├── start-redis-docker.bat  # Windows script to start Redis
+└── README.md
+```
+
+## API Endpoints
+
+### Device Management
+- `POST /api/data` - Read/configure device data
+- `DELETE /api/device_cleanup` - Clean up device data
+- `GET /api/devices` - Get all devices
+- `POST /api/devices` - Add new device
+- `PUT /api/devices` - Update device
+- `DELETE /api/devices` - Delete device
+
+### Redis Data Access
+- `GET /api/redis/monitoring` - Get monitoring data from Redis
+- `GET /api/redis/running_config` - Get running configuration from Redis
+- `GET /api/redis/operational_config` - Get operational configuration from Redis
+- `GET /api/redis/device_status` - Get device status from Redis
+- `GET /api/redis/device_summary` - Get comprehensive device summary
+
+## Configuration
+
+The system automatically:
+- Polls device data every 5 seconds
+- Stores monitoring data in Redis DB 0
+- Stores user configurations in Redis DB 1
+- Stores device configurations in Redis DB 2
+- Serves frontend requests from Redis cache first
+
+## Troubleshooting
+
+### Redis Connection Issues
+1. Ensure Redis is running: `redis-cli ping`
+2. Check Docker containers: `docker ps`
+3. Verify Redis GUI is accessible at http://localhost:8081
+
+### Device Connection Issues
+1. Check device credentials in the admin panel
+2. Verify network connectivity to devices
+3. Check Django logs for connection errors
+
+### Frontend Issues
+1. Ensure backend is running on port 8000
+2. Check browser console for API errors
+3. Verify Redis data is being populated
+
+## Development
+
+### Adding New Device Parameters
+1. Update constants in `react-app/src/utils/data.js`
+2. Add polling logic in `djangobackend/utils/background_poller.py`
+3. Update Redis key structures in `djangobackend/utils/redis_manager.py`
+
+### Modifying Configuration Forms
+1. Update form components in `react-app/src/pages/configuration/`
+2. Ensure Redis loading logic is implemented
+3. Test configuration persistence after page refresh
+
+## License
+
+This project is proprietary and confidential.

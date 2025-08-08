@@ -11,7 +11,7 @@ import {
 } from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { configureDeviceData, readDeviceData } from '../../../utils/api';
+import { configureDeviceData, readDeviceData, getRedisRunningConfigBatch } from '../../../utils/api';
 import { EDFA_PARAMS, EDFA_TYPE } from '../../../utils/data';
 import {
   getConfigurationApiPayloadForEdfa,
@@ -25,6 +25,7 @@ import AlarmSettings from '../edfa/AlarmSettings';
 
 function BoosterConfiguration() {
   const [form, setForm] = useState({});
+  const [loading, setLoading] = useState(true);
   const currentDeviceId = getCurrentDeviceId();
 
   const apiPayloadForReadConfigurationData = useMemo(() => {
@@ -66,20 +67,8 @@ function BoosterConfiguration() {
 
   async function handleSaveAll() {
     try {
-      // Configuration fields (non-alarm related)
-      const configFields = [
-        EDFA_PARAMS.CustomName,
-        EDFA_PARAMS.MaintenanceState,
-        EDFA_PARAMS.ControlMode,
-        EDFA_PARAMS.GainSwitchMode,
-        EDFA_PARAMS.TargetGain,
-        EDFA_PARAMS.TargetPower,
-        EDFA_PARAMS.TargetGainTilt,
-        EDFA_PARAMS.LosShutdown,
-        EDFA_PARAMS.ForceApr,
-      ];
-      
-      const fieldsToSave = configFields.filter(key => form[key] !== undefined && form[key] !== '');
+      // Save all fields with values
+      const fieldsToSave = Object.keys(form).filter(key => form[key] !== undefined && form[key] !== '');
       
       for (const fieldName of fieldsToSave) {
         await configureDeviceData(
@@ -133,19 +122,70 @@ function BoosterConfiguration() {
     }
   }
 
-  // get Edfa configuration data
+  // Load configuration data from Redis first, then fallback to device
   useEffect(() => {
-    async function getEdfaData() {
+    async function loadConfigurationData() {
+      if (!currentDeviceId) return;
+      
+      setLoading(true);
       try {
-        const data = await readDeviceData(apiPayloadForReadConfigurationData);
-        setForm(data.data);
+        // First try to get running configuration from Redis
+        const redisData = await getRedisRunningConfigBatch(
+          currentDeviceId,
+          'edfa-booster',
+          [
+            EDFA_PARAMS.CustomName,
+            EDFA_PARAMS.MaintenanceState,
+            EDFA_PARAMS.ControlMode,
+            EDFA_PARAMS.GainSwitchMode,
+            EDFA_PARAMS.TargetGain,
+            EDFA_PARAMS.TargetPower,
+            EDFA_PARAMS.TargetGainTilt,
+            EDFA_PARAMS.LosShutdown,
+            EDFA_PARAMS.OpticalLooThreshold,
+            EDFA_PARAMS.OpticalLooHysteresis,
+            EDFA_PARAMS.InputOverloadThreshold,
+            EDFA_PARAMS.InputOverloadHysteresis,
+            EDFA_PARAMS.InputLowDegradeThreshold,
+            EDFA_PARAMS.InputLowDegradeHysteresis,
+            EDFA_PARAMS.OpticalLosThreshold,
+            EDFA_PARAMS.OpticalLosHysteresis,
+            EDFA_PARAMS.OrlThresholdWarningThreshold,
+            EDFA_PARAMS.OrlThresholdWarningHysteresis,
+            EDFA_PARAMS.ForceApr,
+          ]
+        );
+
+        // If Redis has data, use it
+        if (redisData && redisData.data && Object.keys(redisData.data).length > 0) {
+          setForm(redisData.data);
+          console.log('Loaded configuration from Redis cache');
+        } else {
+          // Fallback to device data
+          const deviceData = await readDeviceData(apiPayloadForReadConfigurationData);
+          setForm(deviceData.data);
+          console.log('Loaded configuration from device');
+        }
       } catch (e) {
-        toast.error(e.message);
+        console.error('Error loading configuration:', e);
+        toast.error('Failed to load configuration data');
+      } finally {
+        setLoading(false);
       }
     }
 
-    getEdfaData();
-  }, [apiPayloadForReadConfigurationData]);
+    loadConfigurationData();
+  }, [currentDeviceId, apiPayloadForReadConfigurationData]);
+
+  if (loading) {
+    return (
+      <Layout requireDevice={true}>
+        <Box sx={{ padding: 5, textAlign: 'center' }}>
+          <Typography variant='h6'>Loading configuration...</Typography>
+        </Box>
+      </Layout>
+    );
+  }
 
   return (
     <Layout requireDevice={true}>

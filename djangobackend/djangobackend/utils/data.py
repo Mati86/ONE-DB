@@ -14,6 +14,69 @@ ERROR_MESSAGES = {
     "ServerError": "A server errror occurred"
 }
 
+# EDFA Parameters
+EDFA_PARAMS = {
+    # State Params
+    'InputPower': 'input-power',
+    'OutputPower': 'output-power',
+    'EntityDescription': 'entity-description',
+    'OperationalState': 'operational-state',
+    'MeasuredGain': 'measured-gain',
+    'BackReflectionPower': 'back-reflection-power',
+    'OpticalReturnLoss': 'optical-return-loss',
+    'AlsDisabledSecondsRemaining': 'als-disabled-seconds-remaining',
+
+    # Config Params
+    'CustomName': 'custom-name',
+    'MaintenanceState': 'maintenance-state',
+    'ControlMode': 'control-mode',
+    'GainSwitchMode': 'gain-switch-mode',
+    'TargetGain': 'target-gain',
+    'TargetPower': 'target-power',
+    'TargetGainTilt': 'target-gain-tilt',
+    'LosShutdown': 'los-shutdown',
+    'ForceApr': 'force-apr',
+    'OpticalLooThreshold': 'optical-loo-threshold',
+    'OpticalLooHysteresis': 'optical-loo-hysteresis',
+    'OpticalReturnLossThreshold': 'optical-return-loss-threshold',
+    'OpticalReturnLossHysteresis': 'optical-return-loss-hysteresis',
+    'InputOverloadThreshold': 'input-overload-threshold',
+    'InputOverloadHysteresis': 'input-overload-hysteresis',
+    'InputLowDegradeThreshold': 'input-low-degrade-threshold',
+    'InputLowDegradeHysteresis': 'input-low-degrade-hysteresis',
+    'OpticalLosThreshold': 'optical-los-threshold',
+    'OpticalLosHysteresis': 'optical-los-hysteresis',
+    'OrlThresholdWarningThreshold': 'orl-threshold-warning-threshold',
+    'OrlThresholdWarningHysteresis': 'orl-threshold-warning-hysteresis',
+}
+
+# Optical Port Parameters
+OPTICAL_PORT_PARAMS = {
+    # State Params
+    'EntityDescription': 'entity-description',
+    'OperationalState': 'operational-state',
+    'InputPower': 'input-power',
+    'OutputPower': 'output-power',
+    # Config Params
+    'CustomName': 'custom-name',
+    'MaintenanceState': 'maintenance-state',
+    'InputLowDegradeThreshold': 'input-low-degrade-threshold',
+    'InputLowDegradeHysteresis': 'input-low-degrade-hysteresis',
+    'OpticalLosThreshold': 'optical-los-threshold',
+    'OpticalLosHysteresis': 'optical-los-hysteresis',
+}
+
+# Port Numbers
+MUX_OPTICAL_PORT_NUMBERS = [
+    '4101', '4102', '4103', '4104', '4105', '4106', '4107', '4108', '4109', '4110',
+    '4111', '4112', '4113', '4114', '4115', '4116', '4117', '4118', '4119', '4120',
+]
+
+DEMUX_OPTICAL_PORT_NUMBERS = [
+    '5201', '5202', '5203', '5204', '5205', '5206', '5207', '5208', '5209', '5210',
+    '5211', '5212', '5213', '5214', '5215', '5216', '5217', '5218', '5219', '5220',
+]
+
 def ensure_base_directories_exist():
     """Ensure all base directories exist"""
     os.makedirs(YANG_MODULES_DIR, exist_ok=True)

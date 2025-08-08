@@ -132,3 +132,22 @@ STATICFILES_DIRS = [
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Redis Configuration
+REDIS_HOST = 'localhost'
+REDIS_PORT = 6379
+REDIS_DB_MONITORING = 0
+REDIS_DB_RUNNING_CONFIG = 1
+REDIS_DB_OPERATIONAL_CONFIG = 2
+
+# Redis Connection Settings
+REDIS_CONFIG = {
+    'host': REDIS_HOST,
+    'port': REDIS_PORT,
+    'decode_responses': True,
+    'socket_connect_timeout': 5,
+    'socket_timeout': 5,
+}
+
+# Data Polling Interval (seconds)
+DEVICE_DATA_POLL_INTERVAL = 5

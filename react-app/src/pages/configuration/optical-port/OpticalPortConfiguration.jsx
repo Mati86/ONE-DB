@@ -2,7 +2,7 @@ import { Box, Divider, MenuItem, TextField, Typography } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useParams } from 'react-router-dom';
-import { configureDeviceData, readDeviceData } from '../../../utils/api';
+import { configureDeviceData, readDeviceData, getRedisRunningConfigBatch } from '../../../utils/api';
 import { OPTICAL_PORT_PARAMS, PORT_TYPE } from '../../../utils/data';
 import {
   getConfigurationApiPayloadForPort,
@@ -37,6 +37,7 @@ function OpticalPortConfiguration() {
   const currentDeviceId = getCurrentDeviceId();
 
   const [form, setForm] = useState({});
+  const [loading, setLoading] = useState(true);
 
   const handleInputChange = e => {
     const { name, value } = e.target;
@@ -75,19 +76,65 @@ function OpticalPortConfiguration() {
 
   const portType = useMemo(() => getPortType(port), [port]);
 
-  // get Port configuration data
+  // Load configuration data from Redis first, then fallback to device
   useEffect(() => {
-    async function getEdfaData() {
+    async function loadConfigurationData() {
+      if (!currentDeviceId) return;
+      
+      setLoading(true);
       try {
-        const data = await readDeviceData(apiPayloadForReadConfigurationData);
-        setForm(data.data);
+        // Define parameters based on port type
+        const parameters = [
+          OPTICAL_PORT_PARAMS.CustomName,
+          OPTICAL_PORT_PARAMS.MaintenanceState,
+        ];
+        
+        if (portType === PORT_TYPE.Multiplexer) {
+          parameters.push(
+            OPTICAL_PORT_PARAMS.InputLowDegradeThreshold,
+            OPTICAL_PORT_PARAMS.InputLowDegradeHysteresis,
+            OPTICAL_PORT_PARAMS.OpticalLosThreshold,
+            OPTICAL_PORT_PARAMS.OpticalLosHysteresis
+          );
+        }
+
+        // First try to get running configuration from Redis
+        const redisData = await getRedisRunningConfigBatch(
+          currentDeviceId,
+          `optical-port-${portType === PORT_TYPE.Multiplexer ? 'mux' : 'demux'}-${port}`,
+          parameters
+        );
+
+        // If Redis has data, use it
+        if (redisData && redisData.data && Object.keys(redisData.data).length > 0) {
+          setForm(redisData.data);
+          console.log('Loaded configuration from Redis cache');
+        } else {
+          // Fallback to device data
+          const deviceData = await readDeviceData(apiPayloadForReadConfigurationData);
+          setForm(deviceData.data);
+          console.log('Loaded configuration from device');
+        }
       } catch (e) {
-        toast.error(e.message);
+        console.error('Error loading configuration:', e);
+        toast.error('Failed to load configuration data');
+      } finally {
+        setLoading(false);
       }
     }
 
-    getEdfaData();
-  }, [apiPayloadForReadConfigurationData]);
+    loadConfigurationData();
+  }, [currentDeviceId, port, portType, apiPayloadForReadConfigurationData]);
+
+  if (loading) {
+    return (
+      <Layout requireDevice={true}>
+        <Box sx={{ padding: 5, textAlign: 'center' }}>
+          <Typography variant='h6'>Loading configuration...</Typography>
+        </Box>
+      </Layout>
+    );
+  }
 
   return (
     <Layout requireDevice={true}>

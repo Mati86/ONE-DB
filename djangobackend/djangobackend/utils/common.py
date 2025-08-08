@@ -182,5 +182,17 @@ def get_schema_rpc_reply(schema):
         return file.read()
 
 
-def get_device_credentials_list(device_credentials):
-    return [device_credentials['ip'],  device_credentials['port'], device_credentials['username'], device_credentials['password'],  False]
+from .device_storage import get_all_devices, get_device_credentials
+
+def get_device_credentials_list():
+    """
+    Get list of all devices from storage
+    """
+    devices = get_all_devices()
+    return list(devices.values())
+
+def get_device_credentials_by_id(device_id):
+    """
+    Get device credentials by device ID
+    """
+    return get_device_credentials(device_id)
