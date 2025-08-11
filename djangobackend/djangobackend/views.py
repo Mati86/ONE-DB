@@ -133,23 +133,23 @@ def device_data(request):
                     return Response({"error": {"message": error_msg}}, status=500)
             if (operation == "read"):
                 try:
-                    # Try to get data from Redis first
+                    # Read ONLY from Redis - no NETCONF sessions in frontend requests
                     redis_data = monitoring_redis.get_monitoring_data(device_id, component, parameter)
                     
                     if redis_data:
-                        # Return data from Redis
+                        # Return data from Redis cache
                         if is_single_request:
                             return Response({"data": {parameter: redis_data["value"]}})
                         responses.append({"key": sub_request['key'], "data": {parameter: redis_data["value"]}})
                     else:
-                        # Fallback to direct device query
-                        data = get_data(device_credentials,
-                                        component, parameter, query, device_id)
+                        # No fallback to device - Redis is the live mirror
+                        # If data is not in Redis, it means background polling hasn't populated it yet
+                        error_msg = f"Data not available in live mirror for {component}:{parameter}. Background polling may still be initializing."
                         if is_single_request:
-                            return Response({"data": data})
-                        responses.append({"key": sub_request['key'], "data": data})
+                            return Response({"error": {"message": error_msg}}, status=404)
+                        responses.append({"key": sub_request['key'], "error": {"message": error_msg}})
                 except Exception as e:
-                    error_msg = f"Read operation failed: {str(e)}"
+                    error_msg = f"Redis read operation failed: {str(e)}"
                     return Response({"error": {"message": error_msg}}, status=500)
 
         return Response(responses)
@@ -238,6 +238,67 @@ def redis_device_summary(request):
         return Response({"data": summary})
     except Exception as e:
         return Response({"error": {"message": f"Failed to get device summary: {str(e)}"}}, status=500)
+
+
+@api_view(['POST'])
+def redis_live_monitoring(request):
+    """Get multiple monitoring parameters from Redis live mirror - NO NETCONF sessions"""
+    try:
+        request_body = request.data
+        device_id = request_body.get('deviceId')
+        
+        if not device_id:
+            return Response({"error": {"message": "deviceId is required"}}, status=400)
+        
+        # Extract parameter requests
+        data_params = request_body.get("data_params", [])
+        if not data_params:
+            return Response({"error": {"message": "data_params is required"}}, status=400)
+        
+        # Ensure it's a list
+        if isinstance(data_params, dict):
+            data_params = [data_params]
+        
+        responses = []
+        
+        for param_request in data_params:
+            component = param_request.get('component')
+            parameter = param_request.get('parameter')
+            key = param_request.get('key', f"{component}:{parameter}")
+            
+            if not component or not parameter:
+                responses.append({
+                    "key": key,
+                    "error": {"message": "component and parameter are required"}
+                })
+                continue
+            
+            try:
+                # Read ONLY from Redis live mirror
+                redis_data = monitoring_redis.get_monitoring_data(device_id, component, parameter)
+                
+                if redis_data:
+                    responses.append({
+                        "key": key,
+                        "data": {
+                            parameter: redis_data["value"],
+                            "timestamp": redis_data["timestamp"]
+                        }
+                    })
+                else:
+                    responses.append({
+                        "key": key,
+                        "error": {"message": f"Data not available in live mirror for {component}:{parameter}"}
+                    })
+            except Exception as e:
+                responses.append({
+                    "key": key,
+                    "error": {"message": f"Redis read failed: {str(e)}"}
+                })
+        
+        return Response({"data": responses})
+    except Exception as e:
+        return Response({"error": {"message": f"Live monitoring request failed: {str(e)}"}}, status=500)
 
 
 @api_view(['GET', 'POST', 'PUT', 'DELETE'])

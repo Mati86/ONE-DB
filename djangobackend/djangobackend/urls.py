@@ -23,6 +23,8 @@ urlpatterns = [
          views.redis_device_status, name='redis device status'),
     path('api/redis/device_summary',
          views.redis_device_summary, name='redis device summary'),
+    path('api/redis/live_monitoring',
+         views.redis_live_monitoring, name='redis live monitoring'),
     path('api/devices',
          views.device_management, name='device management'),
 ]

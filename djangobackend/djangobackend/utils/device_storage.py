@@ -19,7 +19,22 @@ def get_all_devices():
     try:
         ensure_device_storage_exists()
         with open(DEVICE_STORAGE_FILE, 'r') as f:
-            return json.load(f)
+            devices_data = json.load(f)
+            
+        # Convert the format to match expected structure
+        devices = {}
+        for device_id, credentials in devices_data.items():
+            # Convert port to int if it's a string
+            if isinstance(credentials.get('port'), str):
+                credentials['port'] = int(credentials['port'])
+            
+            devices[device_id] = {
+                'id': device_id,
+                'name': f"Device-{device_id[:8]}",  # Use first 8 chars of UUID as name
+                'credentials': credentials,
+                'dataRefreshInterval': 2  # Default to 2 seconds
+            }
+        return devices
     except Exception as e:
         logger.error(f"Failed to read device storage: {e}")
         return {}
@@ -36,8 +51,13 @@ def save_device(device_id, device_data):
         devices = get_all_devices()
         devices[device_id] = device_data
         
+        # Convert back to the simple format for storage
+        storage_data = {}
+        for dev_id, dev_data in devices.items():
+            storage_data[dev_id] = dev_data.get('credentials', {})
+        
         with open(DEVICE_STORAGE_FILE, 'w') as f:
-            json.dump(devices, f, indent=2)
+            json.dump(storage_data, f, indent=2)
         
         logger.info(f"Saved device {device_id}")
         return True
@@ -54,8 +74,13 @@ def delete_device(device_id):
         if device_id in devices:
             del devices[device_id]
             
+            # Convert back to the simple format for storage
+            storage_data = {}
+            for dev_id, dev_data in devices.items():
+                storage_data[dev_id] = dev_data.get('credentials', {})
+            
             with open(DEVICE_STORAGE_FILE, 'w') as f:
-                json.dump(devices, f, indent=2)
+                json.dump(storage_data, f, indent=2)
             
             logger.info(f"Deleted device {device_id}")
             return True
@@ -71,4 +96,9 @@ def get_device_credentials(device_id):
     device = get_device_by_id(device_id)
     if device:
         return device.get('credentials')
-    return None 
+    return None
+
+def get_all_device_ids():
+    """Get all device IDs from storage"""
+    devices = get_all_devices()
+    return list(devices.keys()) 

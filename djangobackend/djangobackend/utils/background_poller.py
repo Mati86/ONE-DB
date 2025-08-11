@@ -3,9 +3,11 @@ import time
 import logging
 from datetime import datetime
 from django.conf import settings
-from .redis_manager import monitoring_redis, operational_config_redis
+from .redis_manager import monitoring_redis, operational_config_redis, running_config_redis
 from .get_data import get_data
-from .common import get_device_credentials_list, validate_device_credentials,get_device_credentials_by_id
+from .edit_data import edit_data
+from .common import get_device_credentials_list, validate_device_credentials, get_device_credentials_by_id
+from .device_storage import get_all_device_ids
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +33,16 @@ class DeviceDataPoller:
         if not self.devices_to_poll and self.running:
             self.running = False
             logger.info(f"Stopped background polling for device {device_id}")
+    
+    def start_polling_all_devices(self):
+        """Start polling for all devices in storage"""
+        try:
+            device_ids = get_all_device_ids()
+            for device_id in device_ids:
+                self.start_polling(device_id)
+            logger.info(f"Started polling for {len(device_ids)} devices")
+        except Exception as e:
+            logger.error(f"Error starting polling for all devices: {e}")
     
     def _poll_loop(self):
         """Main polling loop"""
@@ -82,22 +94,22 @@ class DeviceDataPoller:
             # Define monitoring parameters based on EDFA type
             if edfa_type == 'booster':
                 monitoring_params = [
-                    EDFA_PARAMS.InputPower,
-                    EDFA_PARAMS.OutputPower,
-                    EDFA_PARAMS.MeasuredGain,
-                    EDFA_PARAMS.BackReflectionPower,
-                    EDFA_PARAMS.OpticalReturnLoss,
-                    EDFA_PARAMS.AlsDisabledSecondsRemaining,
-                    EDFA_PARAMS.EntityDescription,
-                    EDFA_PARAMS.OperationalState,
+                    EDFA_PARAMS['InputPower'],
+                    EDFA_PARAMS['OutputPower'],
+                    EDFA_PARAMS['MeasuredGain'],
+                    EDFA_PARAMS['BackReflectionPower'],
+                    EDFA_PARAMS['OpticalReturnLoss'],
+                    EDFA_PARAMS['AlsDisabledSecondsRemaining'],
+                    EDFA_PARAMS['EntityDescription'],
+                    EDFA_PARAMS['OperationalState'],
                 ]
             else:  # preamplifier
                 monitoring_params = [
-                    EDFA_PARAMS.InputPower,
-                    EDFA_PARAMS.OutputPower,
-                    EDFA_PARAMS.MeasuredGain,
-                    EDFA_PARAMS.EntityDescription,
-                    EDFA_PARAMS.OperationalState,
+                    EDFA_PARAMS['InputPower'],
+                    EDFA_PARAMS['OutputPower'],
+                    EDFA_PARAMS['MeasuredGain'],
+                    EDFA_PARAMS['EntityDescription'],
+                    EDFA_PARAMS['OperationalState'],
                 ]
             
             # Get data from device
@@ -133,10 +145,10 @@ class DeviceDataPoller:
             
             # Define parameters to poll for optical ports
             monitoring_params = [
-                OPTICAL_PORT_PARAMS.InputPower,
-                OPTICAL_PORT_PARAMS.OutputPower,
-                OPTICAL_PORT_PARAMS.EntityDescription,
-                OPTICAL_PORT_PARAMS.OperationalState,
+                OPTICAL_PORT_PARAMS['InputPower'],
+                OPTICAL_PORT_PARAMS['OutputPower'],
+                OPTICAL_PORT_PARAMS['EntityDescription'],
+                OPTICAL_PORT_PARAMS['OperationalState'],
             ]
             
             # Poll all multiplexer ports (4101-4120)
@@ -192,6 +204,30 @@ class DeviceDataPoller:
         except Exception as e:
             logger.error(f"Error polling optical ports data for device {device_id}: {e}")
     
+    def configure_device_parameter(self, device_id, component, target_parameter, value, query):
+        """Configure a parameter on a device"""
+        try:
+            # Get device credentials from storage
+            device_credentials = get_device_credentials_by_id(device_id)
+            
+            if not device_credentials:
+                logger.warning(f"No credentials found for device {device_id}")
+                return False
+            
+            # Validate credentials
+            if not validate_device_credentials(device_credentials):
+                logger.warning(f"Invalid credentials for device {device_id}")
+                return False
+            
+            # Use edit_data to configure the parameter
+            edit_data(device_credentials, component, target_parameter, value, query, device_id)
+            logger.info(f"Successfully configured {target_parameter} on device {device_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error configuring parameter {target_parameter} on device {device_id}: {e}")
+            return False
+
     def _poll_operational_config(self, device_id, device_credentials):
         """Poll operational configuration from device"""
         try:
@@ -199,41 +235,41 @@ class DeviceDataPoller:
             
             # Poll EDFA operational configuration
             booster_config_params = [
-                EDFA_PARAMS.TargetGain,
-                EDFA_PARAMS.TargetPower,
-                EDFA_PARAMS.ControlMode,
-                EDFA_PARAMS.CustomName,
-                EDFA_PARAMS.MaintenanceState,
-                EDFA_PARAMS.GainSwitchMode,
-                EDFA_PARAMS.TargetGainTilt,
-                EDFA_PARAMS.LosShutdown,
-                EDFA_PARAMS.OpticalLooThreshold,
-                EDFA_PARAMS.OpticalLooHysteresis,
-                EDFA_PARAMS.InputOverloadThreshold,
-                EDFA_PARAMS.InputOverloadHysteresis,
-                EDFA_PARAMS.InputLowDegradeThreshold,
-                EDFA_PARAMS.InputLowDegradeHysteresis,
-                EDFA_PARAMS.OpticalLosThreshold,
-                EDFA_PARAMS.OpticalLosHysteresis,
-                EDFA_PARAMS.OrlThresholdWarningThreshold,
-                EDFA_PARAMS.OrlThresholdWarningHysteresis,
-                EDFA_PARAMS.ForceApr,
+                EDFA_PARAMS['TargetGain'],
+                EDFA_PARAMS['TargetPower'],
+                EDFA_PARAMS['ControlMode'],
+                EDFA_PARAMS['CustomName'],
+                EDFA_PARAMS['MaintenanceState'],
+                EDFA_PARAMS['GainSwitchMode'],
+                EDFA_PARAMS['TargetGainTilt'],
+                EDFA_PARAMS['LosShutdown'],
+                EDFA_PARAMS['OpticalLooThreshold'],
+                EDFA_PARAMS['OpticalLooHysteresis'],
+                EDFA_PARAMS['InputOverloadThreshold'],
+                EDFA_PARAMS['InputOverloadHysteresis'],
+                EDFA_PARAMS['InputLowDegradeThreshold'],
+                EDFA_PARAMS['InputLowDegradeHysteresis'],
+                EDFA_PARAMS['OpticalLosThreshold'],
+                EDFA_PARAMS['OpticalLosHysteresis'],
+                EDFA_PARAMS['OrlThresholdWarningThreshold'],
+                EDFA_PARAMS['OrlThresholdWarningHysteresis'],
+                EDFA_PARAMS['ForceApr'],
             ]
             
             preamplifier_config_params = [
-                EDFA_PARAMS.TargetGain,
-                EDFA_PARAMS.TargetPower,
-                EDFA_PARAMS.ControlMode,
-                EDFA_PARAMS.CustomName,
-                EDFA_PARAMS.MaintenanceState,
-                EDFA_PARAMS.GainSwitchMode,
-                EDFA_PARAMS.TargetGainTilt,
-                EDFA_PARAMS.LosShutdown,
-                EDFA_PARAMS.OpticalLooThreshold,
-                EDFA_PARAMS.OpticalLooHysteresis,
-                EDFA_PARAMS.InputOverloadThreshold,
-                EDFA_PARAMS.InputOverloadHysteresis,
-                EDFA_PARAMS.ForceApr,
+                EDFA_PARAMS['TargetGain'],
+                EDFA_PARAMS['TargetPower'],
+                EDFA_PARAMS['ControlMode'],
+                EDFA_PARAMS['CustomName'],
+                EDFA_PARAMS['MaintenanceState'],
+                EDFA_PARAMS['GainSwitchMode'],
+                EDFA_PARAMS['TargetGainTilt'],
+                EDFA_PARAMS['LosShutdown'],
+                EDFA_PARAMS['OpticalLooThreshold'],
+                EDFA_PARAMS['OpticalLooHysteresis'],
+                EDFA_PARAMS['InputOverloadThreshold'],
+                EDFA_PARAMS['InputOverloadHysteresis'],
+                EDFA_PARAMS['ForceApr'],
             ]
             
             # Get booster operational config
@@ -284,12 +320,12 @@ class DeviceDataPoller:
             
             # Poll optical port operational configurations
             optical_port_config_params = [
-                OPTICAL_PORT_PARAMS.CustomName,
-                OPTICAL_PORT_PARAMS.MaintenanceState,
-                OPTICAL_PORT_PARAMS.InputLowDegradeThreshold,
-                OPTICAL_PORT_PARAMS.InputLowDegradeHysteresis,
-                OPTICAL_PORT_PARAMS.OpticalLosThreshold,
-                OPTICAL_PORT_PARAMS.OpticalLosHysteresis,
+                OPTICAL_PORT_PARAMS['CustomName'],
+                OPTICAL_PORT_PARAMS['MaintenanceState'],
+                OPTICAL_PORT_PARAMS['InputLowDegradeThreshold'],
+                OPTICAL_PORT_PARAMS['InputLowDegradeHysteresis'],
+                OPTICAL_PORT_PARAMS['OpticalLosThreshold'],
+                OPTICAL_PORT_PARAMS['OpticalLosHysteresis'],
             ]
             
             # Poll MUX port configurations

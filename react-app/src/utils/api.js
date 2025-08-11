@@ -8,6 +8,7 @@ import {
   REDIS_OPERATIONAL_CONFIG_URL,
   REDIS_DEVICE_STATUS_URL,
   REDIS_DEVICE_SUMMARY_URL,
+  REDIS_LIVE_MONITORING_URL,
 } from './data';
 
 export async function configureDeviceData(requestData) {
@@ -108,6 +109,22 @@ export async function getRedisRunningConfigBatch(deviceId, component, parameters
     console.error('Error fetching running config batch:', error);
     return { data: {} };
   }
+}
+
+// New Redis-only live monitoring API - NO NETCONF sessions
+export async function getRedisLiveMonitoring(deviceId, parameterRequests) {
+  const requestData = {
+    deviceId: deviceId,
+    data_params: parameterRequests
+  };
+  
+  return await apiRequestSender(REDIS_LIVE_MONITORING_URL, {
+    method: 'POST',
+    body: JSON.stringify(requestData),
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
 }
 
 export async function apiRequestSender(url, options) {

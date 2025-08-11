@@ -1,1 +1,14 @@
-{}
+{
+    "eba43174-223b-44b5-af38-1247f82bb74e": {
+        "ip": "10.3.12.101",
+        "port": "830",
+        "username": "superuser",
+        "password": "Sup%9User"
+    },
+    "015ffc0c-5754-4d1e-8214-d78404e8e6b7": {
+        "ip": "10.3.12.102",
+        "port": "830",
+        "username": "superuser",
+        "password": "Sup%9User"
+    }
+}
