@@ -4,15 +4,22 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .utils.data import ERROR_MESSAGES, cleanup_device_data
-from .utils.edit_data import edit_data
 from .utils.generate_schema_dependencies import generate_schema_dependencies
 from .utils.generate_schemas import generate_yang_schemas
-from .utils.get_data import get_data
 from .utils.common import validate_device_operation
 from .utils.redis_manager import monitoring_redis, running_config_redis, operational_config_redis
 from .utils.background_poller import device_poller
 from .utils.device_storage import get_all_devices, save_device, delete_device, get_device_by_id
+import traceback
 
+@api_view(['GET'])
+def get_redis_keys(request):
+    """Temporary endpoint to list all keys in monitoring Redis DB"""
+    try:
+        keys = monitoring_redis.redis_client.keys('*')
+        return Response({"data": [k for k in keys]})
+    except Exception as e:
+        return Response({"error": {"message": f"Failed to get Redis keys: {str(e)}"}}, status=500)
 
 @api_view(['DELETE'])
 def device_cleanup(request):
@@ -78,21 +85,31 @@ def device_schemas(request):
 
         
 def get_subrequests_array(request):
-    if type(request) == list:
+    # Accept list or dict; return empty list for None or unexpected types
+    if request is None:
+        return []
+    if isinstance(request, list):
         # For list requests, ensure each item has a 'key' field
         return [item if 'key' in item else {**item, 'key': f'auto-key-{i}'} for i, item in enumerate(request)]
-    if type(request) == dict:
+    if isinstance(request, dict):
         # For single dict requests, add a 'key' field
         return [{**request, 'key': 'only-key'}]
+    # Unknown type -> return empty list
+    return []
 
 @api_view(['POST'])
 def device_data(request):
     try:
         # A request can hold many sub_requests like getting data for
         # many components with different 'dn's
-        request_body = request.data
-        device_credentials, data_params = request_body['device_credentials'], request_body["data_params"]
+        request_body = request.data or {}
+        device_credentials = request_body.get('device_credentials')
+        data_params = request_body.get('data_params')
         device_id = request_body.get('deviceId')  # Extract device ID from request
+
+        # Validate required fields
+        if data_params is None:
+            return Response({"error": {"message": "Missing required field: data_params"}}, status=400)
         
         # Validate device operation
         is_valid, error_message = validate_device_operation(device_credentials, device_id)
@@ -111,51 +128,106 @@ def device_data(request):
         responses = []
 
         for sub_request in sub_requests:
-            operation, component, parameter, query = sub_request['operation'], sub_request[
-                'component'], sub_request['parameter'], sub_request['query']
-            if (operation == "config"):
+            operation = sub_request.get('operation')
+            component = sub_request.get('component')
+            parameter = sub_request.get('parameter')
+            query = sub_request.get('query')
+
+            # Helper: build empty data object for parameter(s)
+            def _empty_data_for_param(param):
+                if isinstance(param, list):
+                    return {p: None for p in param}
+                return {param: None}
+
+            # Basic validation
+            if not operation or not component or parameter is None:
+                key = sub_request.get('key', 'unknown')
+                data_obj = _empty_data_for_param(parameter) if parameter is not None else {}
+                # Always include a data object to avoid frontend runtime errors
+                responses.append({"key": key, "data": data_obj, "error": {"message": "operation, component and parameter are required"}})
+                if is_single_request:
+                    return Response({"data": data_obj}, status=400)
+                continue
+
+            if operation == "config":
+                # Forward config requests to edit_data (which handles device writes)
                 try:
-                    # Store configuration in Redis
-                    user = request_body.get('user', 'admin')
-                    running_config_redis.store_running_config(
-                        device_id, component, parameter, sub_request['value'], user
-                    )
-                    
-                    # Apply configuration to device
-                    edit_data(device_credentials, component,
-                              parameter, sub_request['value'], query, device_id)
+                    # Import edit_data lazily to avoid import-time dependency issues
+                    from .utils.edit_data import edit_data
+                    value = sub_request.get('value')
+                    edit_data(device_credentials, component, parameter, value, query, device_id)
                     if is_single_request:
-                        return Response({"data": {"success": True}})
-                    responses.append(
-                        {"key": sub_request['key'], "data": {"success": True}})
-                except Exception as e:
-                    error_msg = f"Configuration operation failed: {str(e)}"
-                    return Response({"error": {"message": error_msg}}, status=500)
-            if (operation == "read"):
-                try:
-                    # Read ONLY from Redis - no NETCONF sessions in frontend requests
-                    redis_data = monitoring_redis.get_monitoring_data(device_id, component, parameter)
-                    
-                    if redis_data:
-                        # Return data from Redis cache
-                        if is_single_request:
-                            return Response({"data": {parameter: redis_data["value"]}})
-                        responses.append({"key": sub_request['key'], "data": {parameter: redis_data["value"]}})
+                        # For single request, return data shaped for parameter(s)
+                        if isinstance(parameter, list):
+                            # If caller provided dict of values, include them; else map each param to value
+                            if isinstance(value, dict):
+                                return Response({"data": {p: value.get(p) for p in parameter}})
+                            return Response({"data": {p: value for p in parameter}})
+                        return Response({"data": {parameter: value}})
+                    # For batch or multi param, include a data object
+                    if isinstance(parameter, list):
+                        if isinstance(value, dict):
+                            data_obj = {p: value.get(p) for p in parameter}
+                        else:
+                            data_obj = {p: value for p in parameter}
                     else:
-                        # No fallback to device - Redis is the live mirror
-                        # If data is not in Redis, it means background polling hasn't populated it yet
-                        error_msg = f"Data not available in live mirror for {component}:{parameter}. Background polling may still be initializing."
-                        if is_single_request:
-                            return Response({"error": {"message": error_msg}}, status=404)
-                        responses.append({"key": sub_request['key'], "error": {"message": error_msg}})
+                        data_obj = {parameter: value}
+                    responses.append({"key": sub_request.get('key'), "success": True, "data": data_obj})
                 except Exception as e:
-                    error_msg = f"Redis read operation failed: {str(e)}"
-                    return Response({"error": {"message": error_msg}}, status=500)
+                    err = {"message": f"Config operation failed: {str(e)}"}
+                    data_obj = _empty_data_for_param(parameter)
+                    if is_single_request:
+                        return Response({"data": data_obj}, status=500)
+                    responses.append({"key": sub_request.get('key'), "data": data_obj, "error": err})
+
+            elif operation == "read":
+                # Read ONLY from Redis (live mirror). Always return a data object so frontend can safely read properties.
+                try:
+                    # Support single-parameter and multi-parameter (list) requests
+                    if isinstance(parameter, list):
+                        batch = monitoring_redis.get_monitoring_data_batch(device_id, component, parameter)
+                        data_obj = {}
+                        for p in parameter:
+                            pd = batch.get(p)
+                            if pd and isinstance(pd, dict):
+                                data_obj[p] = pd.get('value')
+                            else:
+                                data_obj[p] = None
+                        if is_single_request:
+                            return Response({"data": data_obj})
+                        responses.append({"key": sub_request.get('key'), "data": data_obj})
+                    else:
+                        redis_data = monitoring_redis.get_monitoring_data(device_id, component, parameter)
+                        value = None
+                        timestamp = None
+                        if redis_data and isinstance(redis_data, dict):
+                            value = redis_data.get('value')
+                            timestamp = redis_data.get('timestamp')
+
+                        if is_single_request:
+                            return Response({"data": {parameter: value}})
+
+                        responses.append({"key": sub_request.get('key'), "data": {parameter: value, "timestamp": timestamp}})
+                except Exception as e:
+                    err = {"message": f"Redis read operation failed: {str(e)}"}
+                    data_obj = _empty_data_for_param(parameter)
+                    if is_single_request:
+                        return Response({"data": data_obj}, status=500)
+                    responses.append({"key": sub_request.get('key'), "data": data_obj, "error": err})
 
         return Response(responses)
     except KeyError as e:
         return Response({"error": {"message": f"Missing required field: {str(e)}"}}, status=400)
     except Exception as e:
+        tb = traceback.format_exc()
+        # Save traceback to file for debugging (temporary)
+        try:
+            with open(r"c:\Users\abeer\Documents\ROADM_Dashboard\ONE-FE\djangobackend\device_data_error.log", "w", encoding="utf-8") as f:
+                f.write("Exception in device_data:\n")
+                f.write(tb)
+        except Exception:
+            pass
+        # Return generic message to client
         return Response({"error": {"message": f"Device data operation failed: {str(e)}"}}, status=500)
 
 
@@ -166,14 +238,41 @@ def redis_monitoring_data(request):
         device_id = request.GET.get('deviceId')
         component = request.GET.get('component')
         parameter = request.GET.get('parameter')
+        port_type = request.GET.get('portType') # New: for grouped optical ports
         
-        if not device_id or not component or not parameter:
-            return Response({"error": {"message": "Missing required parameters: deviceId, component, parameter"}}, status=400)
+        if not device_id:
+            return Response({"error": {"message": "Missing required parameter: deviceId"}}, status=400)
         
-        data = monitoring_redis.get_monitoring_data(device_id, component, parameter)
+        if port_type and parameter == 'grouped':
+            # Handle grouped optical port data
+            data = monitoring_redis.get_grouped_port_data(device_id, port_type)
+        elif not component or not parameter:
+            return Response({"error": {"message": "Missing required parameters: component, parameter"}}, status=400)
+        else:
+            # Handle general monitoring data
+            data = monitoring_redis.get_monitoring_data(device_id, component, parameter)
+
         return Response({"data": data})
     except Exception as e:
         return Response({"error": {"message": f"Failed to get monitoring data: {str(e)}"}}, status=500)
+
+
+@api_view(['GET'])
+def redis_timeseries_data(request):
+    """Get historical time series data from Redis"""
+    try:
+        device_id = request.GET.get('deviceId')
+        component = request.GET.get('component')
+        parameter = request.GET.get('parameter')
+        count = int(request.GET.get('count', 100)) # Default to 100 data points
+
+        if not device_id or not component or not parameter:
+            return Response({"error": {"message": "Missing required parameters: deviceId, component, parameter"}}, status=400)
+
+        data = monitoring_redis.get_timeseries_data(device_id, component, parameter, count)
+        return Response({"data": data})
+    except Exception as e:
+        return Response({"error": {"message": f"Failed to get time series data: {str(e)}"}}, status=500)
 
 
 @api_view(['GET'])
@@ -282,13 +381,14 @@ def redis_live_monitoring(request):
                         "key": key,
                         "data": {
                             parameter: redis_data["value"],
-                            "timestamp": redis_data["timestamp"]
+                            "timestamp": redis_data.get("timestamp")
                         }
                     })
                 else:
+                    # Return data with nulls so frontend can safely attempt to read properties
                     responses.append({
                         "key": key,
-                        "error": {"message": f"Data not available in live mirror for {component}:{parameter}"}
+                        "data": { parameter: None, "timestamp": None }
                     })
             except Exception as e:
                 responses.append({

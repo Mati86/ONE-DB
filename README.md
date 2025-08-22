@@ -119,15 +119,29 @@ ONE-FE/
 - `GET /api/redis/operational_config` - Get operational configuration from Redis
 - `GET /api/redis/device_status` - Get device status from Redis
 - `GET /api/redis/device_summary` - Get comprehensive device summary
+- `POST /api/redis/live_monitoring` - Batch read of monitoring parameters from Redis only (no device sessions)
 
 ## Configuration
 
 The system automatically:
-- Polls device data every 5 seconds
+- Polls device data every 2 seconds
 - Stores monitoring data in Redis DB 0
 - Stores user configurations in Redis DB 1
 - Stores device configurations in Redis DB 2
 - Serves frontend requests from Redis cache first
+
+### Redis Key Structure
+- Monitoring (DB 0): `device:{deviceId}:monitoring:{component}:{parameter}`
+- Running (DB 1): `device:{deviceId}:running:{component}:{parameter}`
+- Operational (DB 2): `device:{deviceId}:operational:{component}:{parameter}`
+
+Values are JSON that include both UTC and local timestamps, for example:
+`{"value": 5.8, "timestamp": "2025-08-13T18:29:43.271059+00:00", "timestamp_local": "2025-08-13T23:29:43.271059+05:00"}`
+
+### Frontend → Backend → Redis flow (monitoring)
+- Frontend calls `getRedisMonitoringData` in `react-app/src/utils/api.js` → `GET /api/redis/monitoring`.
+- Backend route `djangobackend/urls.py` → `views.redis_monitoring_data`.
+- View uses `monitoring_redis.get_monitoring_data(...)` to read from Redis DB 0 and returns JSON to the frontend.
 
 ## Troubleshooting
 

@@ -63,7 +63,16 @@ export async function cleanupDeviceData(deviceId) {
 
 // Redis API functions
 export async function getRedisMonitoringData(deviceId, component, parameter) {
+  // Special handling for grouped optical port data
+  if ((component === 'optical-ports-mux' || component === 'optical-ports-demux') && parameter === 'grouped') {
+    return await getRedisGroupedPortData(deviceId, component.replace('optical-ports-', ''));
+  }
   const url = `${REDIS_MONITORING_URL}?deviceId=${deviceId}&component=${component}&parameter=${parameter}`;
+  return await apiRequestSender(url, { method: 'GET' });
+}
+
+export async function getRedisGroupedPortData(deviceId, portType) {
+  const url = `${REDIS_MONITORING_URL}?deviceId=${deviceId}&portType=${portType}&parameter=grouped`;
   return await apiRequestSender(url, { method: 'GET' });
 }
 
@@ -128,12 +137,37 @@ export async function getRedisLiveMonitoring(deviceId, parameterRequests) {
 }
 
 export async function apiRequestSender(url, options) {
-  const response = await fetch(url, options);
-  if (response.status >= 500) {
-    throw new Error(
-      response.error?.message ?? `Request to api failed due to a server error.`
-    );
+  try {
+    const response = await fetch(url, options);
+
+    // Log raw response text before attempting to parse JSON
+    const responseText = await response.text();
+    console.log(`API Request Debug: Raw response for URL: ${url}`, responseText);
+
+    if (!response.ok) {
+      let errorData = {};
+      try {
+        errorData = JSON.parse(responseText);
+      } catch (jsonError) {
+        console.error(`API Request Error: Could not parse JSON from error response for URL: ${url}`, jsonError, `Raw response: ${responseText}`);
+        throw new Error(`Request to API failed with status ${response.status}: ${response.statusText}. Could not parse error details.`);
+      }
+      console.error(`API Request Error: Status ${response.status} for URL: ${url}`, errorData);
+      throw new Error(
+        errorData.error?.message || `Request to API failed with status ${response.status}: ${response.statusText}`
+      );
+    }
+
+    const data = JSON.parse(responseText);
+    console.log(`API Request Debug: Parsed data for URL: ${url}`, data);
+    return data;
+  } catch (error) {
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      console.error(`Network Error: Failed to fetch from URL: ${url}. This might indicate a CORS issue or backend not running.`, error);
+      throw new Error(`Network Error: Unable to connect to the server. Please check if the backend is running and accessible. (${error.message})`);
+    } else {
+      console.error(`API Request Error for URL: ${url}`, error);
+      throw error;
+    }
   }
-  const data = await response.json();
-  return data;
 }

@@ -150,16 +150,7 @@ REDIS_CONFIG = {
     'socket_timeout': 5,
 }
 
-# Django cache configured to Redis (monitoring DB by default)
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB_MONITORING}",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
-    }
-}
+
 
 # Data Polling Interval (seconds)
-DEVICE_DATA_POLL_INTERVAL = 2
+DEVICE_DATA_POLL_INTERVAL = 0.1

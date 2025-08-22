@@ -1,16 +1,20 @@
 import { Box, MenuItem, Select, Typography, Chip} from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { getCurrentDeviceId, getDevices, setCurrentDeviceId } from '../../../utils/utils';
 
 const Navbar = () => {
   const [devices, setDevices] = useState([]);
-  const [currentDevice, setCurrentDevice] = useState('');
+  const [currentDevice, setCurrentDevice] = useState(getCurrentDeviceId() || '');
 
   useEffect(() => {
     const updateDeviceList = () => {
       const deviceList = getDevices();
       setDevices(deviceList);
-      setCurrentDevice(getCurrentDeviceId() || '');
+      const newCurrentDeviceId = getCurrentDeviceId();
+      // Only update if the device ID has actually changed
+      if (newCurrentDeviceId !== currentDevice) {
+        setCurrentDevice(newCurrentDeviceId || '');
+      }
     };
 
     // Initial load
@@ -25,12 +29,12 @@ const Navbar = () => {
     return () => window.removeEventListener('deviceChange', handleDeviceChange);
   }, []);
 
-  function handleDeviceChange(e) {
+  const handleDeviceChange = useCallback((e) => {
     const deviceId = e.target.value;
     setCurrentDevice(deviceId);
     setCurrentDeviceId(deviceId);
     // Note: Page reload removed for better UX - components will react to device changes automatically
-  }
+  }, []);
 
   const selectedDevice = devices.find(d => d.id === currentDevice);
 

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { apiRequestSender } from '../utils/api';
-import { DEVICE_DATA_URL } from '../utils/data';
+import { getRedisMonitoringData } from '../utils/api'; // use Redis instead of DEVICE_DATA_URL
 import { getCurrentDeviceId } from '../utils/utils';
 
 function useApiPoll(interval, requestData) {
@@ -9,51 +8,59 @@ function useApiPoll(interval, requestData) {
 
   useEffect(() => {
     if (!interval || !requestData) return;
-    
-    // Validate that we have a current device selected
+
     const currentDeviceId = getCurrentDeviceId();
     if (!currentDeviceId) {
-      console.warn('No device selected. API polling paused.');
-      setData(null); // Clear data when no device selected
+      console.warn('No device selected. Redis polling paused.');
+      setData(null);
       return;
     }
-    
+
     const intervalId = setInterval(getData, interval);
     getData(); // Initial call
     return () => clearInterval(intervalId);
 
     async function getData() {
       try {
-        // Double-check device is still selected before making API call
-        if (!getCurrentDeviceId()) {
+        const deviceId = getCurrentDeviceId();
+        if (!deviceId) {
           setData(null);
           return;
         }
-        
-        const data = await apiRequestSender(DEVICE_DATA_URL, {
-          method: 'POST',
-          body: JSON.stringify(requestData),
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        setData(data);
+
+        // requestData is an array of { component, parameter, key }
+        const results = await Promise.all(
+          requestData.map(({ component, parameter, key }) =>
+            getRedisMonitoringData(deviceId, component, parameter)
+              .then(res => ({
+  key,
+  data: { 
+    [parameter]: res?.data?.value ?? null, 
+    timestamp: res?.data?.timestamp ?? null 
+  }
+}))
+
+              .catch(err => ({
+                key,
+                error: { message: err.message }
+              }))
+          )
+        );
+
+        setData(results);
       } catch (e) {
         toast.error(e.message, { id: 'poll-error' });
       }
     }
   }, [interval, requestData]);
 
-  // Listen for device change events
   useEffect(() => {
     const handleDeviceChange = (event) => {
       const { deviceId } = event.detail;
       if (!deviceId) {
-        // Device was deselected, clear data
         setData(null);
       } else {
-        // Device was changed, data will be refreshed on next poll
-        console.log('Device changed, will refresh data on next poll');
+        console.log('Device changed, Redis poll will refresh on next interval');
       }
     };
 

@@ -77,8 +77,9 @@ class DeviceDataPoller:
             self._poll_edfa_data(device_id, device_credentials, 'booster')
             self._poll_edfa_data(device_id, device_credentials, 'preamplifier')
             
-            # Poll all optical port data
-            self._poll_all_optical_ports_data(device_id, device_credentials)
+            # Poll all optical port data (grouped to reduce keys)
+            # Use grouped polling to store mux/demux under two keys instead of per-port keys
+            self._poll_grouped_optical_ports_data(device_id, device_credentials)
             
             # Poll operational configuration
             self._poll_operational_config(device_id, device_credentials)
@@ -137,72 +138,49 @@ class DeviceDataPoller:
             
         except Exception as e:
             logger.error(f"Error polling {edfa_type} EDFA data for device {device_id}: {e}")
+
     
-    def _poll_all_optical_ports_data(self, device_id, device_credentials):
-        """Poll all optical ports monitoring data"""
-        try:
-            from .data import OPTICAL_PORT_PARAMS, MUX_OPTICAL_PORT_NUMBERS, DEMUX_OPTICAL_PORT_NUMBERS
-            
-            # Define parameters to poll for optical ports
-            monitoring_params = [
-                OPTICAL_PORT_PARAMS['InputPower'],
-                OPTICAL_PORT_PARAMS['OutputPower'],
-                OPTICAL_PORT_PARAMS['EntityDescription'],
-                OPTICAL_PORT_PARAMS['OperationalState'],
-            ]
-            
-            # Poll all multiplexer ports (4101-4120)
-            for port_number in MUX_OPTICAL_PORT_NUMBERS:
-                try:
-                    data = get_data(
-                        device_credentials,
-                        'optical-port',
-                        monitoring_params,
-                        {'physical-port': {'dn': f'ne=1;chassis=1;card=1;port={port_number}'}},
-                        device_id
-                    )
-                    
-                    timestamp = datetime.utcnow().isoformat()
-                    for param, value in data.items():
-                        if value is not None:
-                            monitoring_redis.store_monitoring_data(
-                                device_id,
-                                f'optical-port-mux-{port_number}',
-                                param,
-                                value,
-                                timestamp
-                            )
-                except Exception as e:
-                    logger.debug(f"Error polling MUX port {port_number}: {e}")
-            
-            # Poll all demultiplexer ports (5201-5220)
-            for port_number in DEMUX_OPTICAL_PORT_NUMBERS:
-                try:
-                    data = get_data(
-                        device_credentials,
-                        'optical-port',
-                        monitoring_params,
-                        {'physical-port': {'dn': f'ne=1;chassis=1;card=1;port={port_number}'}},
-                        device_id
-                    )
-                    
-                    timestamp = datetime.utcnow().isoformat()
-                    for param, value in data.items():
-                        if value is not None:
-                            monitoring_redis.store_monitoring_data(
-                                device_id,
-                                f'optical-port-demux-{port_number}',
-                                param,
-                                value,
-                                timestamp
-                            )
-                except Exception as e:
-                    logger.debug(f"Error polling DEMUX port {port_number}: {e}")
-            
-            logger.debug(f"Polled all optical ports data for device {device_id}")
-            
-        except Exception as e:
-            logger.error(f"Error polling optical ports data for device {device_id}: {e}")
+    # ... (keep all existing methods the same until _poll_all_optical_ports_data) ...
+
+    def _poll_grouped_optical_ports_data(self, device_id, creds):
+        """Poll all optical ports (mux and demux) and store them as grouped keys."""
+        from .data import OPTICAL_PORT_PARAMS, MUX_OPTICAL_PORT_NUMBERS, DEMUX_OPTICAL_PORT_NUMBERS
+
+        params = [
+            OPTICAL_PORT_PARAMS["InputPower"],
+            OPTICAL_PORT_PARAMS["OutputPower"],
+            OPTICAL_PORT_PARAMS["EntityDescription"],
+            OPTICAL_PORT_PARAMS["OperationalState"],
+        ]
+
+        mux_data = {}
+        for port in MUX_OPTICAL_PORT_NUMBERS:
+            try:
+                data = get_data(
+                    creds, "optical-port", params,
+                    {"physical-port": {"dn": f"ne=1;chassis=1;card=1;port={port}"}}, device_id
+                )
+                mux_data[str(port)] = {p: v for p, v in data.items() if v is not None}
+            except Exception as e:
+                logger.debug(f"Error polling mux port {port}: {e}")
+
+        demux_data = {}
+        for port in DEMUX_OPTICAL_PORT_NUMBERS:
+            try:
+                data = get_data(
+                    creds, "optical-port", params,
+                    {"physical-port": {"dn": f"ne=1;chassis=1;card=1;port={port}"}}, device_id
+                )
+                demux_data[str(port)] = {p: v for p, v in data.items() if v is not None}
+            except Exception as e:
+                logger.debug(f"Error polling demux port {port}: {e}")
+
+        if mux_data:
+            monitoring_redis.store_grouped_monitoring_data(device_id, "optical-ports-mux", mux_data)
+        if demux_data:
+            monitoring_redis.store_grouped_monitoring_data(device_id, "optical-ports-demux", demux_data)
+
+    # ... (keep all other existing methods exactly the same) ...
     
     def configure_device_parameter(self, device_id, component, target_parameter, value, query):
         """Configure a parameter on a device"""

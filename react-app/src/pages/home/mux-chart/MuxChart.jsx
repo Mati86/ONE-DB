@@ -18,23 +18,15 @@ import {
   YAxis,
 } from 'recharts';
 import useApiPoll from '../../../hooks/useApiPoll';
-import useDataPollInterval from '../../../hooks/useDataPollInterval';
-import {
-  MUX_OPTICAL_PORT_NUMBERS,
-  OPTICAL_PORT_PARAMS,
-} from '../../../utils/data';
-import {
-  getApiPayloadForDeviceData,
-  getDataParamsForPort,
-  getCurrentDeviceId,
-} from '../../../utils/utils';
+import { MUX_OPTICAL_PORT_NUMBERS, OPTICAL_PORT_PARAMS } from '../../../utils/data';
+import { getApiPayloadForDeviceData, getDataParamsForPort, getCurrentDeviceId } from '../../../utils/utils';
 
 function getApiPayload(portNumbers) {
   const currentDeviceId = getCurrentDeviceId();
   return getApiPayloadForDeviceData(
     portNumbers.map(portNumber => ({
       key: portNumber,
-      ...getDataParamsForPort(portNumber, [OPTICAL_PORT_PARAMS.InputPower]),
+      ...getDataParamsForPort(portNumber, [OPTICAL_PORT_PARAMS.InputPower, OPTICAL_PORT_PARAMS.OutputPower]), // Added OutputPower
     })),
     currentDeviceId
   );
@@ -44,7 +36,7 @@ function MuxChart() {
   const [selectedPortNumbers, setSelectedPortNumbers] = useState(['4101']);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentData, setCurrentData] = useState([]);
-  const pollInterval = useDataPollInterval();
+  const pollInterval = 5000; // Ensure this matches your polling interval
   const currentDeviceId = getCurrentDeviceId();
 
   const apiPayload = useMemo(() => {
@@ -54,58 +46,45 @@ function MuxChart() {
 
   const apiData = useApiPoll(pollInterval, apiPayload);
 
-  function handlePortNumbersChange(e) {
-    setSelectedPortNumbers(e.target.value);
-    setDropdownOpen(false);
-  }
-
   useEffect(() => {
+    console.log('API Data:', apiData); // Log the API data for debugging
     if (apiData) {
-      setCurrentData(prev => {
-        let newData = [...prev];
-        const powerFormattedData = {};
-        apiData.forEach(response => {
-          powerFormattedData[response.key] =
-            response.data[OPTICAL_PORT_PARAMS.InputPower];
-        });
-        newData.unshift({
-          // name is displayed on x-axis
-          name: '0',
-          ...powerFormattedData,
-        });
-        // update the names
-        return newData.slice(0, 7).map((data, index) => {
-          return {
-            ...data,
-            // name is displayed on x-axis
-            name: (index * (pollInterval / 1000)).toString(),
-          };
-        });
-      });
+    setCurrentData(prev => {
+  const newDataPoint = { name: (prev.length * (pollInterval / 1000)).toString() };
+
+  selectedPortNumbers.forEach(portNumber => {
+    newDataPoint[portNumber] = {
+      input: apiData[portNumber]?.InputPower ?? null,
+      output: apiData[portNumber]?.OutputPower ?? null,
+    };
+  });
+
+  return [newDataPoint, ...prev].slice(0, 7);
+});
+
     }
-  }, [apiData, pollInterval]);
+  }, [apiData, pollInterval, selectedPortNumbers]);
 
-  const chartLines = useMemo(() => {
-    if (!currentData.length) return null;
-    const filteredKeys = Object.keys(currentData[0]).filter(
-      key => key !== 'name'
+ const chartLines = useMemo(() => {
+  if (!currentData.length) return null;
+  const lines = [];
+
+  selectedPortNumbers.forEach(portNumber => {
+    lines.push(
+      <Line key={`${portNumber}-input`} dataKey={`${portNumber}.input`} stroke='green' name={`${portNumber} Input`} />
     );
+    lines.push(
+      <Line key={`${portNumber}-output`} dataKey={`${portNumber}.output`} stroke='blue' name={`${portNumber} Output`} />
+    );
+  });
 
-    return filteredKeys.map(key => {
-      return <Line key={key} type='monotone' dataKey={key} stroke='green' />;
-    });
-  }, [currentData]);
+  return lines;
+}, [currentData, selectedPortNumbers]);
+
 
   return (
-    <Box
-      sx={{
-        boxShadow: '2px 4px 10px 1px rgba(201, 201, 201, 0.47)',
-        padding: '10px',
-      }}
-    >
-      <Typography variant='h6' sx={{ mb: 1, textAlign: 'center' }}>
-        Multiplexer Power
-      </Typography>
+    <Box sx={{ boxShadow: '2px 4px 10px 1px rgba(201, 201, 201, 0.47)', padding: '10px' }}>
+      <Typography variant='h6' sx={{ mb: 1, textAlign: 'center' }}>Multiplexer Power</Typography>
       <FormControl fullWidth sx={{ mb: 2 }}>
         <InputLabel id='select-port'>Ports</InputLabel>
         <Select
@@ -114,7 +93,7 @@ function MuxChart() {
           size='small'
           value={selectedPortNumbers}
           label='Ports'
-          onChange={handlePortNumbersChange}
+          onChange={e => setSelectedPortNumbers(e.target.value)}
           multiple
           open={dropdownOpen} 
           onOpen={() => setDropdownOpen(true)} 
@@ -128,25 +107,11 @@ function MuxChart() {
         </Select>
       </FormControl>
       <ResponsiveContainer aspect={2 / 1}>
-        <LineChart
-          data={currentData ?? []}
-          margin={{ top: 15, right: 30, left: 20, bottom: 5 }}
-          height={320}
-        >
+        <LineChart data={currentData} margin={{ top: 15, right: 30, left: 20, bottom: 5 }} height={320}>
           {chartLines}
           <CartesianGrid stroke='#ccc' strokeDasharray='5 5' />
-          <XAxis
-            dataKey='name'
-            domain={[0, (pollInterval / 1000) * 6]}
-            type='number'
-            tickCount={7}
-          >
-            <Label
-              fontSize={12}
-              value='Time'
-              offset={0}
-              position='insideBottom'
-            />
+          <XAxis dataKey='name' domain={[0, (pollInterval / 1000) * 6]} type='number' tickCount={7}>
+            <Label fontSize={12} value='Time' offset={0} position='insideBottom' />
           </XAxis>
           <YAxis domain={[-60, 20]} type='number' tickCount={6} />
           <Tooltip />

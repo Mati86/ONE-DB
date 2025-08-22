@@ -15,6 +15,8 @@ urlpatterns = [
          views.device_cleanup, name='device cleanup'),
     path('api/redis/monitoring',
          views.redis_monitoring_data, name='redis monitoring data'),
+    path('api/redis/timeseries',
+         views.redis_timeseries_data, name='redis timeseries data'),
     path('api/redis/running_config',
          views.redis_running_config, name='redis running config'),
     path('api/redis/operational_config',
@@ -27,4 +29,6 @@ urlpatterns = [
          views.redis_live_monitoring, name='redis live monitoring'),
     path('api/devices',
          views.device_management, name='device management'),
+    path('api/redis/keys',
+         views.get_redis_keys, name='get redis keys'),
 ]

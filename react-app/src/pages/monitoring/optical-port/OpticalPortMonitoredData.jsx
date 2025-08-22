@@ -10,6 +10,12 @@ function OpticalPortMonitoredData({
   outputPower,
   portType,
   monitoredData,
+  customName,
+  maintenanceState,
+  inputLowDegradeThreshold,
+  inputLowDegradeHysteresis,
+  opticalLosThreshold,
+  opticalLosHysteresis,
 }) {
   return (
     <Box>
@@ -42,6 +48,42 @@ function OpticalPortMonitoredData({
             value={outputPower}
           />
         )}
+        <OpticalPortMonitoredDataItem
+          monitoredData={monitoredData}
+          dataKey={OPTICAL_PORT_PARAMS.CustomName}
+          name='Custom Name'
+          value={customName}
+        />
+        <OpticalPortMonitoredDataItem
+          monitoredData={monitoredData}
+          dataKey={OPTICAL_PORT_PARAMS.MaintenanceState}
+          name='Maintenance State'
+          value={maintenanceState}
+        />
+        <OpticalPortMonitoredDataItem
+          monitoredData={monitoredData}
+          dataKey={OPTICAL_PORT_PARAMS.InputLowDegradeThreshold}
+          name='Input Low Degrade Threshold'
+          value={inputLowDegradeThreshold}
+        />
+        <OpticalPortMonitoredDataItem
+          monitoredData={monitoredData}
+          dataKey={OPTICAL_PORT_PARAMS.InputLowDegradeHysteresis}
+          name='Input Low Degrade Hysteresis'
+          value={inputLowDegradeHysteresis}
+        />
+        <OpticalPortMonitoredDataItem
+          monitoredData={monitoredData}
+          dataKey={OPTICAL_PORT_PARAMS.OpticalLosThreshold}
+          name='Optical Los Threshold'
+          value={opticalLosThreshold}
+        />
+        <OpticalPortMonitoredDataItem
+          monitoredData={monitoredData}
+          dataKey={OPTICAL_PORT_PARAMS.OpticalLosHysteresis}
+          name='Optical Los Hysteresis'
+          value={opticalLosHysteresis}
+        />
       </List>
     </Box>
   );

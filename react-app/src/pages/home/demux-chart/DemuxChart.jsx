@@ -64,10 +64,14 @@ function DemuxChart() {
       setCurrentData(prev => {
         let newData = [...prev];
         const powerFormattedData = {};
-        apiData.forEach(response => {
-          powerFormattedData[response.key] =
-            response.data[OPTICAL_PORT_PARAMS.OutputPower];
+        
+        // Iterate over selectedPortNumbers, which are the keys expected in apiData
+        selectedPortNumbers.forEach(portNumber => {
+            // Access the specific output power value for the port directly from apiData
+            // apiData[portNumber] will be an object like { "output-power": value, "timestamp": "..." }
+            powerFormattedData[portNumber] = apiData[portNumber]?.[OPTICAL_PORT_PARAMS.OutputPower];
         });
+
         newData.unshift({
           name: '0',
           ...powerFormattedData,
@@ -80,7 +84,7 @@ function DemuxChart() {
         });
       });
     }
-  }, [apiData, pollInterval]);
+  }, [apiData, pollInterval, selectedPortNumbers]); // Added selectedPortNumbers to dependencies
 
   const chartLines = useMemo(() => {
     if (!currentData.length) return null;

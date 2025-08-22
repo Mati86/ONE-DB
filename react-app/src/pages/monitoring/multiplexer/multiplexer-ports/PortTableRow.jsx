@@ -29,16 +29,16 @@ function PortTableRow({ portNumber, portType }) {
       <TableRow key={portNumber}>
         <TableCell>{portNumber}</TableCell>
         <TableCell>
-          {data?.data[OPTICAL_PORT_PARAMS.EntityDescription]}
+          {data?.[OPTICAL_PORT_PARAMS.EntityDescription]}
         </TableCell>
         <TableCell>
-          {data?.data[OPTICAL_PORT_PARAMS.OperationalState]}
+          {data?.[OPTICAL_PORT_PARAMS.OperationalState]}
         </TableCell>
         {portType === PORT_TYPE.Multiplexer && (
-          <TableCell>{data?.data[OPTICAL_PORT_PARAMS.InputPower]}</TableCell>
+          <TableCell>{data?.[OPTICAL_PORT_PARAMS.InputPower]}</TableCell>
         )}
         {portType === PORT_TYPE.Demultiplexer && (
-          <TableCell>{data?.data[OPTICAL_PORT_PARAMS.OutputPower]}</TableCell>
+          <TableCell>{data?.[OPTICAL_PORT_PARAMS.OutputPower]}</TableCell>
         )}        <TableCell>
           <Box display='flex'>
             {/* Show Monitor button only in monitoring routes */}

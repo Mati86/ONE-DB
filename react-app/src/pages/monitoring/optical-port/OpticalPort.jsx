@@ -1,7 +1,7 @@
 import { Box, Divider, Typography } from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import useApiPoll from '../../../hooks/useApiPoll';
+import { getRedisMonitoringData, getRedisOperationalConfig } from '../../../utils/api';
 import useDataPollInterval from '../../../hooks/useDataPollInterval';
 import {
   OPTICAL_PORT_PARAMS,
@@ -10,61 +10,113 @@ import {
 } from '../../../utils/data';
 import {
   getPortType,
-  getReadApiPayloadForPort,
-  pickKeys,
   getCurrentDeviceId,
 } from '../../../utils/utils';
 import Layout from '../../common-components/Layout';
 import OpticalPortMonitoredData from './OpticalPortMonitoredData';
 
-function getApiPayload(portNumber) {
-  const currentDeviceId = getCurrentDeviceId();
-  const parameters = [
+
+
+async function fetchData(portNumber, currentDeviceId) {
+  const portType = getPortType(portNumber);
+  // Construct the precise component name that matches how data is stored in Redis
+  const componentName = `optical-port-${portType === PORT_TYPE.Multiplexer ? 'mux' : 'demux'}-${portNumber}`;
+
+  // Define individual monitoring parameters to fetch
+  const monitoringParamsToFetch = [
     OPTICAL_PORT_PARAMS.EntityDescription,
     OPTICAL_PORT_PARAMS.OperationalState,
   ];
-  const portType = getPortType(portNumber);
-  if (portType === PORT_TYPE.Multiplexer)
-    parameters.push(OPTICAL_PORT_PARAMS.InputPower);
-  if (portType === PORT_TYPE.Demultiplexer)
-    parameters.push(OPTICAL_PORT_PARAMS.OutputPower);
-  return getReadApiPayloadForPort(portNumber, parameters, currentDeviceId);
+
+  // Add input/output power based on port type
+  if (portType === PORT_TYPE.Multiplexer) {
+    monitoringParamsToFetch.push(OPTICAL_PORT_PARAMS.InputPower);
+  } else if (portType === PORT_TYPE.Demultiplexer) {
+    monitoringParamsToFetch.push(OPTICAL_PORT_PARAMS.OutputPower);
+  }
+
+  // Fetch each monitoring parameter individually
+  const monitoringDataPromises = monitoringParamsToFetch.map(param =>
+    getRedisMonitoringData(currentDeviceId, componentName, param)
+  );
+
+  const monitoringResults = await Promise.all(monitoringDataPromises);
+
+  let monitoringValues = {};
+  monitoringResults.forEach((res, index) => {
+    if (res?.data?.value !== undefined) {
+      monitoringValues[monitoringParamsToFetch[index]] = res.data.value;
+    }
+  });
+
+  // Fetch individual operational configuration data (this part was already correct in logic)
+  const operationalConfigParams = [
+    OPTICAL_PORT_PARAMS.CustomName,
+    OPTICAL_PORT_PARAMS.MaintenanceState,
+    OPTICAL_PORT_PARAMS.InputLowDegradeThreshold,
+    OPTICAL_PORT_PARAMS.InputLowDegradeHysteresis,
+    OPTICAL_PORT_PARAMS.OpticalLosThreshold,
+    OPTICAL_PORT_PARAMS.OpticalLosHysteresis,
+  ];
+
+  const operationalConfigPromises = operationalConfigParams.map(param =>
+    getRedisOperationalConfig(currentDeviceId, componentName, param)
+  );
+
+  const operationalConfigResults = await Promise.all(operationalConfigPromises);
+
+  let operationalConfigValues = {};
+  operationalConfigResults.forEach((res, index) => {
+    if (res?.data?.value !== undefined) {
+      operationalConfigValues[operationalConfigParams[index]] = res.data.value;
+    }
+  });
+
+  // Merge all fetched values
+  return { ...monitoringValues, ...operationalConfigValues };
 }
 
 function OpticalPort() {
   const [monitoredData, setMonitoredData] = useState([]);
+  const [currentPortData, setCurrentPortData] = useState(null);
   const pollInterval = useDataPollInterval();
   const params = useParams();
   const currentDeviceId = getCurrentDeviceId();
-
-  const apiPayload = useMemo(() => {
-    if (!currentDeviceId) return null;
-    return getApiPayload(params.port);
-  }, [params.port, currentDeviceId]);
 
   const portType = useMemo(() => {
     return getPortType(params.port);
   }, [params.port]);
 
-  const data = useApiPoll(pollInterval, apiPayload);
+  useEffect(() => {
+    let intervalId;
+    if (pollInterval && currentDeviceId) {
+      const poll = async () => {
+        const data = await fetchData(params.port, currentDeviceId);
+        setCurrentPortData({ data });
+      };
+      poll(); // Initial fetch
+      intervalId = setInterval(poll, pollInterval);
+    }
+    return () => clearInterval(intervalId);
+  }, [pollInterval, params.port, currentDeviceId]);
 
   useEffect(() => {
-    if (data) {
+    if (currentPortData) {
       setMonitoredData(prev => {
         let newData = [...prev];
         newData.unshift({
-          name: 0,
-          ...pickKeys(data.data, Array.from(OPTICAL_PORT_PLOTTABLE_PARAMETERS)),
+          name: newData.length,
+          ...currentPortData.data,
         });
         return newData.slice(0, 7).map((data, index) => {
           return {
             ...data,
-            name: (index * (pollInterval / 1000)).toString(),
+            name: index * (pollInterval / 1000),
           };
         });
       });
     }
-  }, [data, pollInterval]);
+  }, [currentPortData, pollInterval]);
 
   return (
     <Layout requireDevice={true}>
@@ -73,10 +125,16 @@ function OpticalPort() {
           Port {params.port} State
         </Typography>
         <OpticalPortMonitoredData
-          entityDescription={data?.data[OPTICAL_PORT_PARAMS.EntityDescription]}
-          operationalState={data?.data[OPTICAL_PORT_PARAMS.OperationalState]}
-          inputPower={data?.data[OPTICAL_PORT_PARAMS.InputPower]}
-          outputPower={data?.data[OPTICAL_PORT_PARAMS.OutputPower]}
+          entityDescription={currentPortData?.data[OPTICAL_PORT_PARAMS.EntityDescription]}
+          operationalState={currentPortData?.data[OPTICAL_PORT_PARAMS.OperationalState]}
+          inputPower={currentPortData?.data[OPTICAL_PORT_PARAMS.InputPower]}
+          outputPower={currentPortData?.data[OPTICAL_PORT_PARAMS.OutputPower]}
+          customName={currentPortData?.data[OPTICAL_PORT_PARAMS.CustomName]}
+          maintenanceState={currentPortData?.data[OPTICAL_PORT_PARAMS.MaintenanceState]}
+          inputLowDegradeThreshold={currentPortData?.data[OPTICAL_PORT_PARAMS.InputLowDegradeThreshold]}
+          inputLowDegradeHysteresis={currentPortData?.data[OPTICAL_PORT_PARAMS.InputLowDegradeHysteresis]}
+          opticalLosThreshold={currentPortData?.data[OPTICAL_PORT_PARAMS.OpticalLosThreshold]}
+          opticalLosHysteresis={currentPortData?.data[OPTICAL_PORT_PARAMS.OpticalLosHysteresis]}
           portType={portType}
           monitoredData={monitoredData}
         />

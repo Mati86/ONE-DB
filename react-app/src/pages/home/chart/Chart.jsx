@@ -11,7 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 
-function Chart({ aspect, title, data, XInterval, dataKeys }) {
+function Chart({ aspect, title, data, XInterval, dataKeys, YAxisDomain }) {
   return (
     <Box
       sx={{
@@ -46,7 +46,7 @@ function Chart({ aspect, title, data, XInterval, dataKeys }) {
               position='insideBottom'
             />
           </XAxis>
-          <YAxis domain={[-60, 20]} type='number' tickCount={6} />
+          <YAxis domain={YAxisDomain} type='number' tickCount={6} />
           <Tooltip />
           <Legend verticalAlign='top' wrapperStyle={{ fontSize: '12px' }} />
         </LineChart>

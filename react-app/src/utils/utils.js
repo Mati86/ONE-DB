@@ -89,8 +89,11 @@ export function getConfigurationApiPayloadForPort(
 }
 
 export function getDataParamsForPort(portNumber, parameter) {
+  const portType = getPortType(portNumber); // Get 'Multiplexer' or 'Demultiplexer'
+  const componentName = `optical-port-${portType === PORT_TYPE.Multiplexer ? 'mux' : 'demux'}-${portNumber}`;
+
   return {
-    component: COMPONENTS.OpticalPort,
+    component: componentName, // Use the dynamically constructed component name
     parameter,
     query: {
       'physical-port': { dn: `ne=1;chassis=1;card=1;port=${portNumber}` },
@@ -170,13 +173,37 @@ export function saveDevices(devices) {
 }
 
 export function getCurrentDeviceId() {
-  return localStorage.getItem('currentDeviceId');
+  let currentDeviceId = localStorage.getItem('currentDeviceId');
+  const devices = getDevices();
+
+  // If no device is currently selected or the selected device no longer exists, 
+  // try to set the first available device as current.
+  if (!currentDeviceId || !devices.some(device => device.id === currentDeviceId)) {
+    if (devices.length > 0) {
+      const newDeviceId = devices[0].id;
+      if (newDeviceId !== currentDeviceId) { // Only dispatch if the device actually changes
+        currentDeviceId = newDeviceId;
+        localStorage.setItem('currentDeviceId', currentDeviceId);
+        dispatchDeviceChangeEvent(currentDeviceId); // Notify other components
+      }
+    } else {
+      if (currentDeviceId !== null) { // Only dispatch if the device actually changes to null
+        currentDeviceId = null; // No devices available
+        localStorage.removeItem('currentDeviceId');
+        dispatchDeviceChangeEvent(null); // Notify other components
+      }
+    }
+  }
+  return currentDeviceId;
 }
 
 export function setCurrentDeviceId(deviceId) {
-  localStorage.setItem('currentDeviceId', deviceId);
-  // Dispatch device change event
-  dispatchDeviceChangeEvent(deviceId);
+  const oldDeviceId = localStorage.getItem('currentDeviceId');
+  if (oldDeviceId !== deviceId) {
+    localStorage.setItem('currentDeviceId', deviceId);
+    // Dispatch device change event only if the deviceId actually changed
+    dispatchDeviceChangeEvent(deviceId);
+  }
 }
 
 export function addDevice(device) {
