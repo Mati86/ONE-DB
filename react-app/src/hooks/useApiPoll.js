@@ -4,15 +4,18 @@ import { getRedisMonitoringData } from '../utils/api'; // use Redis instead of D
 import { getCurrentDeviceId } from '../utils/utils';
 
 function useApiPoll(interval, requestData) {
-  const [data, setData] = useState();
+  const [data, setData] = useState([]);
 
   useEffect(() => {
-    if (!interval || !requestData) return;
+    if (!interval || !Array.isArray(requestData) || requestData.length === 0) {
+      setData([]);
+      return;
+    }
 
     const currentDeviceId = getCurrentDeviceId();
     if (!currentDeviceId) {
       console.warn('No device selected. Redis polling paused.');
-      setData(null);
+      setData([]);
       return;
     }
 
@@ -24,22 +27,20 @@ function useApiPoll(interval, requestData) {
       try {
         const deviceId = getCurrentDeviceId();
         if (!deviceId) {
-          setData(null);
+          setData([]);
           return;
         }
 
-        // requestData is an array of { component, parameter, key }
         const results = await Promise.all(
           requestData.map(({ component, parameter, key }) =>
             getRedisMonitoringData(deviceId, component, parameter)
               .then(res => ({
-  key,
-  data: { 
-    [parameter]: res?.data?.value ?? null, 
-    timestamp: res?.data?.timestamp ?? null 
-  }
-}))
-
+                key,
+                data: {
+                  [parameter]: res?.data?.value ?? null,
+                  timestamp: res?.data?.timestamp ?? null
+                }
+              }))
               .catch(err => ({
                 key,
                 error: { message: err.message }
@@ -58,7 +59,7 @@ function useApiPoll(interval, requestData) {
     const handleDeviceChange = (event) => {
       const { deviceId } = event.detail;
       if (!deviceId) {
-        setData(null);
+        setData([]);
       } else {
         console.log('Device changed, Redis poll will refresh on next interval');
       }
@@ -70,5 +71,6 @@ function useApiPoll(interval, requestData) {
 
   return data;
 }
+
 
 export default useApiPoll;

@@ -242,15 +242,18 @@ def redis_monitoring_data(request):
         
         if not device_id:
             return Response({"error": {"message": "Missing required parameter: deviceId"}}, status=400)
-        
-        if port_type and parameter == 'grouped':
-            # Handle grouped optical port data
-            data = monitoring_redis.get_grouped_port_data(device_id, port_type)
+      
         elif not component or not parameter:
             return Response({"error": {"message": "Missing required parameters: component, parameter"}}, status=400)
         else:
-            # Handle general monitoring data
-            data = monitoring_redis.get_monitoring_data(device_id, component, parameter)
+            # Handle grouped optical ports request: component may be 'optical-ports-mux' or 'optical-ports-demux' with parameter='grouped'
+            if parameter == 'grouped' and component and component.startswith('optical-ports-'):
+                # frontend sends portType='mux' or 'demux' for convenience
+                port_type = component.replace('optical-ports-', '') if not port_type else port_type
+                data = monitoring_redis.get_grouped_port_data(device_id, port_type)
+            else:
+                # Handle general monitoring data
+                data = monitoring_redis.get_monitoring_data(device_id, component, parameter)
 
         return Response({"data": data})
     except Exception as e:
@@ -273,6 +276,45 @@ def redis_timeseries_data(request):
         return Response({"data": data})
     except Exception as e:
         return Response({"error": {"message": f"Failed to get time series data: {str(e)}"}}, status=500)
+
+
+@api_view(['GET'])
+def redis_grouped_ports(request):
+    """Return grouped mux/demux payload stored in Redis (values + timestamp)."""
+    try:
+        device_id = request.GET.get('deviceId')
+        port_type = request.GET.get('portType')  # 'mux' or 'demux'
+        if not device_id or not port_type:
+            return Response({"error": {"message": "Missing required parameters: deviceId, portType"}}, status=400)
+
+        data = monitoring_redis.get_grouped_port_data(device_id, port_type)
+        return Response({"data": data})
+    except Exception as e:
+        return Response({"error": {"message": f"Failed to get grouped port data: {str(e)}"}}, status=500)
+
+
+@api_view(['GET'])
+def redis_grouped_parameter(request):
+    """Return a mapping of portNumber -> parameter value for grouped mux/demux data.
+
+    Query params: deviceId, portType (mux|demux), parameter (e.g., InputPower)
+    """
+    try:
+        device_id = request.GET.get('deviceId')
+        port_type = request.GET.get('portType')
+        parameter = request.GET.get('parameter')
+        if not device_id or not port_type or not parameter:
+            return Response({"error": {"message": "Missing required parameters: deviceId, portType, parameter"}}, status=400)
+
+        grouped = monitoring_redis.get_grouped_port_data(device_id, port_type)
+        if not grouped:
+            return Response({"data": {}})
+
+        values = grouped.get('values') or {}
+        result = {port: (vals.get(parameter) if isinstance(vals, dict) else None) for port, vals in values.items()}
+        return Response({"data": result})
+    except Exception as e:
+        return Response({"error": {"message": f"Failed to get grouped parameter data: {str(e)}"}}, status=500)
 
 
 @api_view(['GET'])
@@ -337,68 +379,6 @@ def redis_device_summary(request):
         return Response({"data": summary})
     except Exception as e:
         return Response({"error": {"message": f"Failed to get device summary: {str(e)}"}}, status=500)
-
-
-@api_view(['POST'])
-def redis_live_monitoring(request):
-    """Get multiple monitoring parameters from Redis live mirror - NO NETCONF sessions"""
-    try:
-        request_body = request.data
-        device_id = request_body.get('deviceId')
-        
-        if not device_id:
-            return Response({"error": {"message": "deviceId is required"}}, status=400)
-        
-        # Extract parameter requests
-        data_params = request_body.get("data_params", [])
-        if not data_params:
-            return Response({"error": {"message": "data_params is required"}}, status=400)
-        
-        # Ensure it's a list
-        if isinstance(data_params, dict):
-            data_params = [data_params]
-        
-        responses = []
-        
-        for param_request in data_params:
-            component = param_request.get('component')
-            parameter = param_request.get('parameter')
-            key = param_request.get('key', f"{component}:{parameter}")
-            
-            if not component or not parameter:
-                responses.append({
-                    "key": key,
-                    "error": {"message": "component and parameter are required"}
-                })
-                continue
-            
-            try:
-                # Read ONLY from Redis live mirror
-                redis_data = monitoring_redis.get_monitoring_data(device_id, component, parameter)
-                
-                if redis_data:
-                    responses.append({
-                        "key": key,
-                        "data": {
-                            parameter: redis_data["value"],
-                            "timestamp": redis_data.get("timestamp")
-                        }
-                    })
-                else:
-                    # Return data with nulls so frontend can safely attempt to read properties
-                    responses.append({
-                        "key": key,
-                        "data": { parameter: None, "timestamp": None }
-                    })
-            except Exception as e:
-                responses.append({
-                    "key": key,
-                    "error": {"message": f"Redis read failed: {str(e)}"}
-                })
-        
-        return Response({"data": responses})
-    except Exception as e:
-        return Response({"error": {"message": f"Live monitoring request failed: {str(e)}"}}, status=500)
 
 
 @api_view(['GET', 'POST', 'PUT', 'DELETE'])

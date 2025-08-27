@@ -46,13 +46,69 @@ class RedisManager:
         """Generate key for grouped DEMUX ports data"""
         return f"device:{device_id}:monitoring:optical-ports-demux:grouped"
 
+    def _parse_timestamp_to_epoch_ms(self, timestamp):
+        """Parse various timestamp formats into epoch milliseconds.
+
+        Accepts:
+        - int/float (epoch seconds or ms)
+        - ISO-8601 string with or without timezone
+        Returns epoch ms (int). Raises ValueError on bad input.
+        """
+        if timestamp is None:
+            raise ValueError("No timestamp provided")
+
+        # numeric timestamp: determine if seconds or milliseconds
+        if isinstance(timestamp, (int, float)):
+            ts = float(timestamp)
+            if ts > 1e12:  # already ms
+                return int(ts)
+            if ts > 1e9:  # seconds with decimals
+                return int(ts * 1000)
+            return int(ts * 1000)
+
+        # string: try to parse ISO formats
+        if isinstance(timestamp, str):
+            try:
+                # fromisoformat supports offsets like +00:00
+                dt = datetime.fromisoformat(timestamp)
+            except Exception:
+                # Try appending Z -> +00:00
+                try:
+                    if timestamp.endswith('Z'):
+                        dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                    else:
+                        # last resort: parse as naive UTC
+                        dt = datetime.fromisoformat(timestamp)
+                except Exception as e:
+                    raise ValueError(f"Unrecognized timestamp format: {timestamp}") from e
+
+            # If dt is naive, assume UTC
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return int(dt.timestamp() * 1000)
+
+        raise ValueError(f"Unsupported timestamp type: {type(timestamp)}")
+
     def store_monitoring_data(self, device_id, component, parameter, value, timestamp=None):
         """Store monitoring data in Redis and keep only the last 24 hours."""
-        utc_now = datetime.now(timezone.utc)
-        local_now = utc_now.astimezone(ZoneInfo("Asia/Karachi"))
-        iso_timestamp_utc = utc_now.isoformat()
-        iso_timestamp_local = local_now.isoformat()
-        score_ms = int(time.time() * 1000)
+        # Determine score_ms (epoch ms) from provided timestamp or current time
+        try:
+            if timestamp is not None:
+                score_ms = self._parse_timestamp_to_epoch_ms(timestamp)
+                # compute local timestamp from epoch ms
+                dt = datetime.fromtimestamp(score_ms / 1000, tz=timezone.utc).astimezone(ZoneInfo("Asia/Karachi"))
+                iso_timestamp_local = dt.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
+            else:
+                utc_now = datetime.now(timezone.utc)
+                local_now = utc_now.astimezone(ZoneInfo("Asia/Karachi"))
+                iso_timestamp_local = local_now.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
+                score_ms = int(time.time() * 1000)
+        except Exception:
+            # Fallback to server time
+            utc_now = datetime.now(timezone.utc)
+            local_now = utc_now.astimezone(ZoneInfo("Asia/Karachi"))
+            iso_timestamp_local = local_now.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
+            score_ms = int(time.time() * 1000)
 
         try:
             if value is None:
@@ -66,20 +122,23 @@ class RedisManager:
             logger.error(f"Failed to process value for monitoring data: {e} | value={value}")
             store_value = ""
 
+        # Keep payload minimal to save Redis space: only value and local timestamp in ms precision
         data = {
             "value": store_value,
-            "timestamp": iso_timestamp_utc,
             "timestamp_local": iso_timestamp_local,
-            "timezone": "UTC",
-            "timezone_local": "Asia/Karachi",
         }
 
         key = self._get_monitoring_key(device_id, component, parameter)
         try:
-            self.redis_client.set(key, json.dumps(data))
+            # compact JSON (no spaces) to reduce size
+            self.redis_client.set(key, json.dumps(data, separators=(',', ':')))
             timeseries_key = self._get_timeseries_key(device_id, component, parameter)
-            self.redis_client.zadd(timeseries_key, {json.dumps(data): score_ms})
-            day_ago_ms = score_ms - (24 * 60 * 60 * 1000)
+            # Use device timestamp (score_ms) as the timeseries score, but compute
+            # the retention cutoff from server time to avoid accidental mass-deletes
+            # when device clocks are skewed.
+            self.redis_client.zadd(timeseries_key, {json.dumps(data, separators=(',', ':')): score_ms})
+            now_ms = int(time.time() * 1000)
+            day_ago_ms = now_ms - (24 * 60 * 60 * 1000)
             self.redis_client.zremrangebyscore(timeseries_key, 0, day_ago_ms)
             logger.debug(f"Stored monitoring data: {key} = {store_value}")
             return True
@@ -94,15 +153,39 @@ class RedisManager:
         If component is 'optical-ports-mux' or 'optical-ports-demux', use dedicated
         grouped keys to avoid creating per-port keys.
         """
-        utc_now = datetime.now(timezone.utc)
-        local_now = utc_now.astimezone(ZoneInfo("Asia/Karachi"))
-        iso_timestamp_utc = utc_now.isoformat()
-        iso_timestamp_local = local_now.isoformat()
-        score_ms = int(time.time() * 1000)
+        # Determine score_ms: prefer provided per-port timestamps inside grouped_data
+        score_ms = None
+        # grouped_data is a dict of port -> {param: value, optional 'timestamp'}
+        for port_entry in grouped_data.values():
+            try:
+                ts = port_entry.get('timestamp')
+                if ts:
+                    # try parse numeric or ISO
+                    try:
+                        if isinstance(ts, (int, float)):
+                            candidate = int(ts if ts > 1e12 else int(float(ts) * 1000))
+                        elif isinstance(ts, str) and ts.isdigit():
+                            candidate = int(ts)
+                        else:
+                            candidate = self._parse_timestamp_to_epoch_ms(ts)
+                        if candidate:
+                            if score_ms is None or candidate > score_ms:
+                                score_ms = candidate
+                    except Exception:
+                        continue
+            except Exception:
+                continue
+
+        if score_ms is None:
+            # fallback to now
+            score_ms = int(time.time() * 1000)
+
+        # compute local timestamp from epoch ms
+        dt = datetime.fromtimestamp(score_ms / 1000, tz=timezone.utc).astimezone(ZoneInfo("Asia/Karachi"))
+        iso_timestamp_local = dt.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
 
         payload = {
             "values": grouped_data,
-            "timestamp": iso_timestamp_utc,
             "timestamp_local": iso_timestamp_local,
         }
 
@@ -120,15 +203,17 @@ class RedisManager:
         # Overwrite current snapshot
         try:
             if expire_seconds:
-                self.redis_client.set(current_key, json.dumps(payload), ex=int(expire_seconds))
+                self.redis_client.set(current_key, json.dumps(payload, separators=(',', ':')), ex=int(expire_seconds))
             else:
-                self.redis_client.set(current_key, json.dumps(payload))
+                self.redis_client.set(current_key, json.dumps(payload, separators=(',', ':')))
 
-            # Append to time series
-            self.redis_client.zadd(ts_key, {json.dumps(payload): score_ms})
+            # Append to time series (compact JSON) using score_ms determined above
+            self.redis_client.zadd(ts_key, {json.dumps(payload, separators=(',', ':')): int(score_ms)})
 
-            # Remove old (>24h)
-            day_ago_ms = score_ms - (24 * 60 * 60 * 1000)
+            # Remove old (>24h) using server time as cutoff to avoid deleting
+            # recent entries when device timestamps are skewed.
+            now_ms = int(time.time() * 1000)
+            day_ago_ms = now_ms - (24 * 60 * 60 * 1000)
             self.redis_client.zremrangebyscore(ts_key, 0, day_ago_ms)
             return True
         except Exception as e:
@@ -151,46 +236,105 @@ class RedisManager:
 
     def get_monitoring_data(self, device_id, component, parameter):
         """Get current monitoring data"""
+        # Handle grouped optical port keys: component like 'optical-port-mux-4101' or 'optical-port-demux-5201'
+        m = re.match(r'^optical-port-(mux|demux)-(\d+)$', component)
         try:
-            # The component should now be correctly formed by the frontend (e.g., 'optical-port-mux-4101')
-            # So we can directly use _get_monitoring_key to fetch the individual parameter
+            if m:
+                port_type = m.group(1)  # 'mux' or 'demux'
+                port_no = m.group(2)
+                if port_type == 'mux':
+                    key = self._get_grouped_mux_ports_key(device_id)
+                else:
+                    key = self._get_grouped_demux_ports_key(device_id)
+
+                raw = self.redis_client.get(key)
+                if not raw:
+                    return None
+                payload = json.loads(raw)
+                values = payload.get('values') or {}
+                port_values = values.get(str(port_no)) or {}
+                # Return minimal shape: value and timestamp_local
+                val = port_values.get(parameter)
+                return {
+                    'value': val,
+                    'timestamp_local': payload.get('timestamp_local')
+                }
+
+            # Fallback: regular per-parameter key
             key = self._get_monitoring_key(device_id, component, parameter)
             data = self.redis_client.get(key)
-            return json.loads(data) if data else None
+            if not data:
+                return None
+            parsed = json.loads(data)
+            # older callers may expect 'timestamp' key; normalize to timestamp_local
+            if 'timestamp' in parsed and 'timestamp_local' not in parsed:
+                parsed['timestamp_local'] = parsed.pop('timestamp')
+            return parsed
         except Exception as e:
-            logger.error(f"Failed to get monitoring data for key {key}: {e}")
+            logger.error(f"Failed to get monitoring data: {e}")
             return None
-            
+
+    def get_monitoring_data_batch(self, device_id, component, parameters):
+        """Get multiple monitoring data points"""
+        keys = [self._get_monitoring_key(device_id, component, param) for param in parameters]
+        try:
+            data_list = self.redis_client.mget(keys)
+            result = {}
+            for i, param in enumerate(parameters):
+                result[param] = json.loads(data_list[i]) if data_list[i] else None
+            return result
+        except Exception as e:
+            logger.error(f"Failed to get monitoring data batch: {e}")
+            return {param: None for param in parameters}
+
     def get_timeseries_data(self, device_id, component, parameter, count=100):
         """Get historical time series data"""
         key = self._get_timeseries_key(device_id, component, parameter)
         try:
             data = self.redis_client.zrevrange(key, 0, count - 1)
-            return [json.loads(item) for item in data]
+            result = []
+            for item in data:
+                try:
+                    parsed = json.loads(item)
+                    # normalize timestamps if necessary
+                    if 'timestamp' in parsed and 'timestamp_local' not in parsed:
+                        parsed['timestamp_local'] = parsed.pop('timestamp')
+                    result.append(parsed)
+                except Exception:
+                    # skip malformed entries
+                    continue
+            return result
         except Exception as e:
             logger.error(f"Failed to get timeseries data: {e}")
             return []
 
     def store_running_config(self, device_id, component, parameter, value, user="admin", timestamp=None):
         """Store running configuration set by user"""
-        utc_now = datetime.now(timezone.utc)
-        local_now = utc_now.astimezone(ZoneInfo("Asia/Karachi"))
-        iso_timestamp_utc = utc_now.isoformat()
-        iso_timestamp_local = local_now.isoformat()
+        # Use provided timestamp if present
+        if timestamp is not None:
+            try:
+                score_ms = self._parse_timestamp_to_epoch_ms(timestamp)
+                dt = datetime.fromtimestamp(score_ms / 1000, tz=timezone.utc).astimezone(ZoneInfo("Asia/Karachi"))
+                iso_timestamp_local = dt.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
+            except Exception:
+                utc_now = datetime.now(timezone.utc)
+                local_now = utc_now.astimezone(ZoneInfo("Asia/Karachi"))
+                iso_timestamp_local = local_now.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
+        else:
+            utc_now = datetime.now(timezone.utc)
+            local_now = utc_now.astimezone(ZoneInfo("Asia/Karachi"))
+            iso_timestamp_local = local_now.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
 
         data = {
             "value": value,
-            "timestamp": iso_timestamp_utc,
             "timestamp_local": iso_timestamp_local,
-            "timezone": "UTC",
-            "timezone_local": "Asia/Karachi",
             "user": user,
             "source": "user"
         }
 
         key = self._get_running_config_key(device_id, component, parameter)
         try:
-            self.redis_client.set(key, json.dumps(data))
+            self.redis_client.set(key, json.dumps(data, separators=(',', ':')))
             logger.debug(f"Stored running config: {key} = {value}")
             return True
         except Exception as e:
@@ -209,23 +353,29 @@ class RedisManager:
 
     def store_operational_config(self, device_id, component, parameter, value, timestamp=None):
         """Store operational configuration from device"""
-        utc_now = datetime.now(timezone.utc)
-        local_now = utc_now.astimezone(ZoneInfo("Asia/Karachi"))
-        iso_timestamp_utc = utc_now.isoformat()
-        iso_timestamp_local = local_now.isoformat()
+        if timestamp is not None:
+            try:
+                score_ms = self._parse_timestamp_to_epoch_ms(timestamp)
+                dt = datetime.fromtimestamp(score_ms / 1000, tz=timezone.utc).astimezone(ZoneInfo("Asia/Karachi"))
+                iso_timestamp_local = dt.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
+            except Exception:
+                utc_now = datetime.now(timezone.utc)
+                local_now = utc_now.astimezone(ZoneInfo("Asia/Karachi"))
+                iso_timestamp_local = local_now.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
+        else:
+            utc_now = datetime.now(timezone.utc)
+            local_now = utc_now.astimezone(ZoneInfo("Asia/Karachi"))
+            iso_timestamp_local = local_now.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
 
         data = {
             "value": value,
-            "timestamp": iso_timestamp_utc,
             "timestamp_local": iso_timestamp_local,
-            "timezone": "UTC",
-            "timezone_local": "Asia/Karachi",
             "source": "device"
         }
 
         key = self._get_operational_config_key(device_id, component, parameter)
         try:
-            self.redis_client.set(key, json.dumps(data))
+            self.redis_client.set(key, json.dumps(data, separators=(',', ':')))
             logger.debug(f"Stored operational config: {key} = {value}")
             return True
         except Exception as e:
@@ -361,20 +511,3 @@ class RedisManager:
 monitoring_redis = RedisManager(settings.REDIS_DB_MONITORING)
 running_config_redis = RedisManager(settings.REDIS_DB_RUNNING_CONFIG)
 operational_config_redis = RedisManager(settings.REDIS_DB_OPERATIONAL_CONFIG)
-
-def get_monitoring_data_batch(self, device_id, component, parameters):
-        """Get multiple monitoring data points"""
-        result = {}
-        try:
-            for param in parameters:
-                # Use the existing get_monitoring_data to fetch each individual parameter
-                # This function now correctly handles optical-port-mux/demux components
-                data = self.get_monitoring_data(device_id, component, param)
-                if data and isinstance(data, dict) and 'value' in data:
-                    result[param] = data['value']
-                else:
-                    result[param] = None # Ensure a null value if data is not found or malformed
-            return result
-        except Exception as e:
-            logger.error(f"Failed to get monitoring data batch for device {device_id}, component {component}, parameters {parameters}: {e}")
-            return {param: None for param in parameters} # Return nulls on error

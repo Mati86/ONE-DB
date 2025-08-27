@@ -1,7 +1,8 @@
 import threading
 import time
+import concurrent.futures
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from django.conf import settings
 from .redis_manager import monitoring_redis, operational_config_redis, running_config_redis
 from .get_data import get_data
@@ -48,12 +49,22 @@ class DeviceDataPoller:
         """Main polling loop"""
         while self.running:
             try:
-                for device_id in list(self.devices_to_poll):
-                    self._poll_device_data(device_id)
-                
+                device_ids = list(self.devices_to_poll)
+                if device_ids:
+                    # Parallelize device polling to reduce end-to-end delay
+                    max_workers = min(32, max(1, len(device_ids)))
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                        futures = {executor.submit(self._poll_device_data, d): d for d in device_ids}
+                        for fut in concurrent.futures.as_completed(futures):
+                            dev = futures[fut]
+                            try:
+                                fut.result()
+                            except Exception as e:
+                                logger.error(f"Error polling device {dev}: {e}")
+
                 # Sleep for the configured interval
                 time.sleep(self.poll_interval)
-                
+
             except Exception as e:
                 logger.error(f"Error in polling loop: {e}")
                 time.sleep(5)  # Wait before retrying
@@ -73,16 +84,22 @@ class DeviceDataPoller:
                 logger.warning(f"Invalid credentials for device {device_id}")
                 return
             
-            # Poll EDFA data (booster and preamplifier)
-            self._poll_edfa_data(device_id, device_credentials, 'booster')
-            self._poll_edfa_data(device_id, device_credentials, 'preamplifier')
-            
-            # Poll all optical port data (grouped to reduce keys)
-            # Use grouped polling to store mux/demux under two keys instead of per-port keys
-            self._poll_grouped_optical_ports_data(device_id, device_credentials)
-            
-            # Poll operational configuration
-            self._poll_operational_config(device_id, device_credentials)
+            # Poll EDFA data (booster and preamplifier), grouped ports and operational config in parallel
+            tasks = [
+                (self._poll_edfa_data, (device_id, device_credentials, 'booster')),
+                (self._poll_edfa_data, (device_id, device_credentials, 'preamplifier')),
+                (self._poll_grouped_optical_ports_data, (device_id, device_credentials)),
+                (self._poll_operational_config, (device_id, device_credentials)),
+            ]
+
+            # Use a small executor for per-device parallelism
+            with concurrent.futures.ThreadPoolExecutor(max_workers=min(4, len(tasks))) as ex:
+                futures = [ex.submit(fn, *args) for fn, args in tasks]
+                for fut in concurrent.futures.as_completed(futures):
+                    try:
+                        fut.result()
+                    except Exception as e:
+                        logger.error(f"Error in device {device_id} subtask: {e}")
             
         except Exception as e:
             logger.error(f"Error polling device {device_id}: {e}")
@@ -118,20 +135,22 @@ class DeviceDataPoller:
                 device_credentials,
                 'edfa',
                 monitoring_params,
-                {'edfa': {'dn': f'ne=1;chassis=1;card=1;edfa={1 if edfa_type == "booster" else 2}'}},
+                {'edfa': {'dn': f'ne=1;chassis=1;card=1;edfa={1 if edfa_type == "booster" else 2}'}} ,
                 device_id
             )
-            
-            # Store in Redis
-            timestamp = datetime.utcnow().isoformat()
+
+            # Use device-provided timestamp when available
+            device_ts = data.get('timestamp')
             for param, value in data.items():
+                if param == 'timestamp':
+                    continue
                 if value is not None:
                     monitoring_redis.store_monitoring_data(
-                        device_id, 
-                        f'edfa-{edfa_type}', 
-                        param, 
-                        value, 
-                        timestamp
+                        device_id,
+                        f'edfa-{edfa_type}',
+                        param,
+                        value,
+                        device_ts
                     )
             
             logger.debug(f"Polled {len(data)} parameters for {edfa_type} EDFA on device {device_id}")
@@ -154,26 +173,50 @@ class DeviceDataPoller:
         ]
 
         mux_data = {}
-        for port in MUX_OPTICAL_PORT_NUMBERS:
+        # Poll mux ports in parallel to reduce total latency
+        def poll_mux(port):
             try:
                 data = get_data(
                     creds, "optical-port", params,
                     {"physical-port": {"dn": f"ne=1;chassis=1;card=1;port={port}"}}, device_id
                 )
-                mux_data[str(port)] = {p: v for p, v in data.items() if v is not None}
+                ts = data.get('timestamp')
+                entry = {p: v for p, v in data.items() if p != 'timestamp' and v is not None}
+                if ts is not None:
+                    entry['timestamp'] = ts
+                return (str(port), entry)
             except Exception as e:
                 logger.debug(f"Error polling mux port {port}: {e}")
+                return (str(port), {})
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(MUX_OPTICAL_PORT_NUMBERS))) as mux_executor:
+            mux_futs = [mux_executor.submit(poll_mux, p) for p in MUX_OPTICAL_PORT_NUMBERS]
+            for fut in concurrent.futures.as_completed(mux_futs):
+                port, entry = fut.result()
+                mux_data[port] = entry
 
         demux_data = {}
-        for port in DEMUX_OPTICAL_PORT_NUMBERS:
+        # Poll demux ports in parallel
+        def poll_demux(port):
             try:
                 data = get_data(
                     creds, "optical-port", params,
                     {"physical-port": {"dn": f"ne=1;chassis=1;card=1;port={port}"}}, device_id
                 )
-                demux_data[str(port)] = {p: v for p, v in data.items() if v is not None}
+                ts = data.get('timestamp')
+                entry = {p: v for p, v in data.items() if p != 'timestamp' and v is not None}
+                if ts is not None:
+                    entry['timestamp'] = ts
+                return (str(port), entry)
             except Exception as e:
                 logger.debug(f"Error polling demux port {port}: {e}")
+                return (str(port), {})
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(DEMUX_OPTICAL_PORT_NUMBERS))) as demux_executor:
+            demux_futs = [demux_executor.submit(poll_demux, p) for p in DEMUX_OPTICAL_PORT_NUMBERS]
+            for fut in concurrent.futures.as_completed(demux_futs):
+                port, entry = fut.result()
+                demux_data[port] = entry
 
         if mux_data:
             monitoring_redis.store_grouped_monitoring_data(device_id, "optical-ports-mux", mux_data)
@@ -260,7 +303,7 @@ class DeviceDataPoller:
                     device_id
                 )
                 
-                timestamp = datetime.utcnow().isoformat()
+                timestamp = int(time.time() * 1000)   # epoch in ms
                 for param, value in data.items():
                     if value is not None:
                         operational_config_redis.store_operational_config(
@@ -283,7 +326,7 @@ class DeviceDataPoller:
                     device_id
                 )
                 
-                timestamp = datetime.utcnow().isoformat()
+                timestamp = int(time.time() * 1000)   # epoch in ms
                 for param, value in data.items():
                     if value is not None:
                         operational_config_redis.store_operational_config(
@@ -317,7 +360,7 @@ class DeviceDataPoller:
                         device_id
                     )
                     
-                    timestamp = datetime.utcnow().isoformat()
+                    timestamp = int(time.time() * 1000)   # epoch in ms
                     for param, value in data.items():
                         if value is not None:
                             operational_config_redis.store_operational_config(
@@ -341,7 +384,7 @@ class DeviceDataPoller:
                         device_id
                     )
                     
-                    timestamp = datetime.utcnow().isoformat()
+                    timestamp = int(time.time() * 1000)   # epoch in ms
                     for param, value in data.items():
                         if value is not None:
                             operational_config_redis.store_operational_config(

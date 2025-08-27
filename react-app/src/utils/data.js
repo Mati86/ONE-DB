@@ -10,7 +10,7 @@ export const REDIS_RUNNING_CONFIG_URL = 'http://localhost:8000/api/redis/running
 export const REDIS_OPERATIONAL_CONFIG_URL = 'http://localhost:8000/api/redis/operational_config';
 export const REDIS_DEVICE_STATUS_URL = 'http://localhost:8000/api/redis/device_status';
 export const REDIS_DEVICE_SUMMARY_URL = 'http://localhost:8000/api/redis/device_summary';
-export const REDIS_LIVE_MONITORING_URL = 'http://localhost:8000/api/redis/live_monitoring';
+
 
 export const API_OPERATIONS = {
   Config: 'config',

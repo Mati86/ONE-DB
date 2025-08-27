@@ -6,7 +6,7 @@ import {
   Select,
   Typography,
 } from '@mui/material';
-import { default as React, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   CartesianGrid,
   Label,
@@ -23,40 +23,35 @@ import {
   DEMUX_OPTICAL_PORT_NUMBERS,
   OPTICAL_PORT_PARAMS,
 } from '../../../utils/data';
-import {
-  getApiPayloadForDeviceData,
-  getDataParamsForPort,
-  getCurrentDeviceId,
-} from '../../../utils/utils';
+import { getCurrentDeviceId } from '../../../utils/utils';
 
-function getApiPayload(portNumbers) {
-  const currentDeviceId = getCurrentDeviceId();
-  return getApiPayloadForDeviceData(
-    portNumbers.map(portNumber => ({
-      key: portNumber,
-      ...getDataParamsForPort(portNumber, [OPTICAL_PORT_PARAMS.OutputPower]),
-    })),
-    currentDeviceId
-  );
+// Build Redis payload for Demux ports
+function getRedisPayload(portNumbers) {
+  return portNumbers.map(portNumber => ({
+    key: portNumber,
+    component: `optical-port-demux-${portNumber}`,
+    parameter: OPTICAL_PORT_PARAMS.OutputPower,
+  }));
 }
 
 function DemuxChart() {
   const [selectedPortNumbers, setSelectedPortNumbers] = useState(['5201']);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentData, setCurrentData] = useState([]);
+  // keep UI identical: use static port list from data.js
   const pollInterval = useDataPollInterval();
   const currentDeviceId = getCurrentDeviceId();
 
-  const apiPayload = useMemo(() => {
+  const redisPayload = useMemo(() => {
     if (!currentDeviceId) return null;
-    return getApiPayload(selectedPortNumbers);
+    return getRedisPayload(selectedPortNumbers);
   }, [selectedPortNumbers, currentDeviceId]);
 
-  const apiData = useApiPoll(pollInterval, apiPayload);
+  const apiData = useApiPoll(pollInterval, redisPayload);
 
   function handlePortNumbersChange(e) {
     setSelectedPortNumbers(e.target.value);
-    setDropdownOpen(false); // Close dropdown after selection
+    setDropdownOpen(false);
   }
 
   useEffect(() => {
@@ -64,35 +59,31 @@ function DemuxChart() {
       setCurrentData(prev => {
         let newData = [...prev];
         const powerFormattedData = {};
-        
-        // Iterate over selectedPortNumbers, which are the keys expected in apiData
-        selectedPortNumbers.forEach(portNumber => {
-            // Access the specific output power value for the port directly from apiData
-            // apiData[portNumber] will be an object like { "output-power": value, "timestamp": "..." }
-            powerFormattedData[portNumber] = apiData[portNumber]?.[OPTICAL_PORT_PARAMS.OutputPower];
+        apiData.forEach(response => {
+          if (response.data) {
+            powerFormattedData[response.key] = response.data[OPTICAL_PORT_PARAMS.OutputPower];
+          }
         });
-
         newData.unshift({
           name: '0',
           ...powerFormattedData,
         });
-        return newData.slice(0, 7).map((data, index) => {
-          return {
-            ...data,
-            name: (index * (pollInterval / 1000)).toString(),
-          };
-        });
+        return newData.slice(0, 7).map((data, index) => ({
+          ...data,
+          name: (index * (pollInterval / 1000)).toString(),
+        }));
       });
     }
-  }, [apiData, pollInterval, selectedPortNumbers]); // Added selectedPortNumbers to dependencies
+  }, [apiData, pollInterval]);
+
+  // no dynamic UI changes — integration handled in backend
 
   const chartLines = useMemo(() => {
     if (!currentData.length) return null;
-    const filtered = Object.keys(currentData[0]).filter(key => key !== 'name');
-
-    return filtered.map(key => {
-      return <Line key={key} type='monotone' dataKey={key} stroke='#8884d8' />;
-    });
+    const filteredKeys = Object.keys(currentData[0]).filter(key => key !== 'name');
+    return filteredKeys.map(key => (
+      <Line key={key} type='monotone' dataKey={key} stroke='#8884d8' />
+    ));
   }, [currentData]);
 
   return (
@@ -119,12 +110,11 @@ function DemuxChart() {
           onOpen={() => setDropdownOpen(true)}
           onClose={() => setDropdownOpen(false)}
         >
-          {DEMUX_OPTICAL_PORT_NUMBERS.map(portName => (
-            <MenuItem key={portName} value={portName}>
-              {' '}
-              {portName}{' '}
-            </MenuItem>
-          ))}
+            {DEMUX_OPTICAL_PORT_NUMBERS.map(portNumber => (
+              <MenuItem key={portNumber} value={portNumber}>
+                {portNumber}
+              </MenuItem>
+            ))}
         </Select>
       </FormControl>
 

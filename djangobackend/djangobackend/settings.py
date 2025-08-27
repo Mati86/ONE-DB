@@ -137,6 +137,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Redis Configuration
 REDIS_HOST = 'localhost'
 REDIS_PORT = 6379
+# Poll interval: express in milliseconds for clarity, then convert to seconds for sleep APIs
+# Default: 100 ms polling
+DEVICE_DATA_POLL_INTERVAL_MS = 100
+DEVICE_DATA_POLL_INTERVAL = DEVICE_DATA_POLL_INTERVAL_MS / 1000.0
 REDIS_DB_MONITORING = 0
 REDIS_DB_RUNNING_CONFIG = 1
 REDIS_DB_OPERATIONAL_CONFIG = 2
@@ -153,4 +157,6 @@ REDIS_CONFIG = {
 
 
 # Data Polling Interval (seconds)
-DEVICE_DATA_POLL_INTERVAL = 0.1
+# Use the millisecond-based value above. Remove accidental override that
+# set an unrealistic tiny interval which could cause scheduling issues.
+DEVICE_DATA_POLL_INTERVAL = DEVICE_DATA_POLL_INTERVAL_MS / 1000.0

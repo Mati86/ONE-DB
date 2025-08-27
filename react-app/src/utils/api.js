@@ -8,7 +8,7 @@ import {
   REDIS_OPERATIONAL_CONFIG_URL,
   REDIS_DEVICE_STATUS_URL,
   REDIS_DEVICE_SUMMARY_URL,
-  REDIS_LIVE_MONITORING_URL,
+ 
 } from './data';
 
 export async function configureDeviceData(requestData) {
@@ -64,17 +64,12 @@ export async function cleanupDeviceData(deviceId) {
 // Redis API functions
 export async function getRedisMonitoringData(deviceId, component, parameter) {
   // Special handling for grouped optical port data
-  if ((component === 'optical-ports-mux' || component === 'optical-ports-demux') && parameter === 'grouped') {
-    return await getRedisGroupedPortData(deviceId, component.replace('optical-ports-', ''));
-  }
   const url = `${REDIS_MONITORING_URL}?deviceId=${deviceId}&component=${component}&parameter=${parameter}`;
   return await apiRequestSender(url, { method: 'GET' });
 }
+ 
 
-export async function getRedisGroupedPortData(deviceId, portType) {
-  const url = `${REDIS_MONITORING_URL}?deviceId=${deviceId}&portType=${portType}&parameter=grouped`;
-  return await apiRequestSender(url, { method: 'GET' });
-}
+
 
 export async function getRedisRunningConfig(deviceId, component, parameter) {
   const url = `${REDIS_RUNNING_CONFIG_URL}?deviceId=${deviceId}&component=${component}&parameter=${parameter}`;
@@ -120,21 +115,7 @@ export async function getRedisRunningConfigBatch(deviceId, component, parameters
   }
 }
 
-// New Redis-only live monitoring API - NO NETCONF sessions
-export async function getRedisLiveMonitoring(deviceId, parameterRequests) {
-  const requestData = {
-    deviceId: deviceId,
-    data_params: parameterRequests
-  };
-  
-  return await apiRequestSender(REDIS_LIVE_MONITORING_URL, {
-    method: 'POST',
-    body: JSON.stringify(requestData),
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  });
-}
+
 
 export async function apiRequestSender(url, options) {
   try {

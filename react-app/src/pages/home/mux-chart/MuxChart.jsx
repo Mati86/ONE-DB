@@ -18,85 +18,107 @@ import {
   YAxis,
 } from 'recharts';
 import useApiPoll from '../../../hooks/useApiPoll';
-import { MUX_OPTICAL_PORT_NUMBERS, OPTICAL_PORT_PARAMS } from '../../../utils/data';
-import { getApiPayloadForDeviceData, getDataParamsForPort, getCurrentDeviceId } from '../../../utils/utils';
+import useDataPollInterval from '../../../hooks/useDataPollInterval';
+import {
+  MUX_OPTICAL_PORT_NUMBERS,
+  OPTICAL_PORT_PARAMS,
+} from '../../../utils/data';
+import { getCurrentDeviceId } from '../../../utils/utils';
 
-function getApiPayload(portNumbers) {
-  const currentDeviceId = getCurrentDeviceId();
-  return getApiPayloadForDeviceData(
-    portNumbers.map(portNumber => ({
-      key: portNumber,
-      ...getDataParamsForPort(portNumber, [OPTICAL_PORT_PARAMS.InputPower, OPTICAL_PORT_PARAMS.OutputPower]), // Added OutputPower
-    })),
-    currentDeviceId
-  );
+// Build payload for Redis API (each entry = { component, parameter, key })
+function getRedisPayload(portNumbers) {
+  return portNumbers.map(portNumber => ({
+    key: portNumber,
+    component: `optical-port-mux-${portNumber}`,
+    parameter: OPTICAL_PORT_PARAMS.InputPower,
+  }));
 }
 
 function MuxChart() {
   const [selectedPortNumbers, setSelectedPortNumbers] = useState(['4101']);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentData, setCurrentData] = useState([]);
-  const pollInterval = 5000; // Ensure this matches your polling interval
+  // keep UI identical: use static port list from data.js
+  const pollInterval = useDataPollInterval();
   const currentDeviceId = getCurrentDeviceId();
 
-  const apiPayload = useMemo(() => {
+  const redisPayload = useMemo(() => {
     if (!currentDeviceId) return null;
-    return getApiPayload(selectedPortNumbers);
+    return getRedisPayload(selectedPortNumbers);
   }, [selectedPortNumbers, currentDeviceId]);
 
-  const apiData = useApiPoll(pollInterval, apiPayload);
+  const apiData = useApiPoll(pollInterval, redisPayload);
+
+  function handlePortNumbersChange(e) {
+    setSelectedPortNumbers(e.target.value);
+    setDropdownOpen(false);
+  }
+
+  // no dynamic UI changes — integration handled in backend
 
   useEffect(() => {
-    console.log('API Data:', apiData); // Log the API data for debugging
     if (apiData) {
-    setCurrentData(prev => {
-  const newDataPoint = { name: (prev.length * (pollInterval / 1000)).toString() };
-
-  selectedPortNumbers.forEach(portNumber => {
-    newDataPoint[portNumber] = {
-      input: apiData[portNumber]?.InputPower ?? null,
-      output: apiData[portNumber]?.OutputPower ?? null,
-    };
-  });
-
-  return [newDataPoint, ...prev].slice(0, 7);
-});
-
+      setCurrentData(prev => {
+        let newData = [...prev];
+        const powerFormattedData = {};
+        apiData.forEach(response => {
+          if (response.data) {
+            powerFormattedData[response.key] =
+              response.data[OPTICAL_PORT_PARAMS.InputPower];
+          }
+        });
+        newData.unshift({
+          name: '0',
+          ...powerFormattedData,
+        });
+        return newData.slice(0, 7).map((data, index) => ({
+          ...data,
+          name: (index * (pollInterval / 1000)).toString(),
+        }));
+      });
     }
-  }, [apiData, pollInterval, selectedPortNumbers]);
+  }, [apiData, pollInterval]);
 
- const chartLines = useMemo(() => {
-  if (!currentData.length) return null;
-  const lines = [];
-
-  selectedPortNumbers.forEach(portNumber => {
-    lines.push(
-      <Line key={`${portNumber}-input`} dataKey={`${portNumber}.input`} stroke='green' name={`${portNumber} Input`} />
+  const chartLines = useMemo(() => {
+    if (!currentData.length) return null;
+    const filteredKeys = Object.keys(currentData[0]).filter(
+      key => key !== 'name'
     );
-    lines.push(
-      <Line key={`${portNumber}-output`} dataKey={`${portNumber}.output`} stroke='blue' name={`${portNumber} Output`} />
-    );
-  });
 
-  return lines;
-}, [currentData, selectedPortNumbers]);
+    // Debug logs
+    console.log('Mux redisPayload:', redisPayload);
+    console.log('Mux apiData:', apiData);
+    console.log('Mux currentData:', currentData);
 
+    return filteredKeys.map(key => (
+      <Line key={key} type="monotone" dataKey={key} stroke="green" />
+    ));
+  }, [currentData, apiData, redisPayload]);
 
   return (
-    <Box sx={{ boxShadow: '2px 4px 10px 1px rgba(201, 201, 201, 0.47)', padding: '10px' }}>
-      <Typography variant='h6' sx={{ mb: 1, textAlign: 'center' }}>Multiplexer Power</Typography>
+    <Box
+      sx={{
+        boxShadow: '2px 4px 10px 1px rgba(201, 201, 201, 0.47)',
+        padding: '10px',
+      }}
+    >
+      <Typography variant="h6" sx={{ mb: 1, textAlign: 'center' }}>
+        Multiplexer Power
+      </Typography>
+
+      {/* Dropdown for port selection */}
       <FormControl fullWidth sx={{ mb: 2 }}>
-        <InputLabel id='select-port'>Ports</InputLabel>
+        <InputLabel id="select-port">Ports</InputLabel>
         <Select
-          labelId='select-port'
+          labelId="select-port"
           fullWidth
-          size='small'
+          size="small"
           value={selectedPortNumbers}
-          label='Ports'
-          onChange={e => setSelectedPortNumbers(e.target.value)}
+          label="Ports"
+          onChange={handlePortNumbersChange}
           multiple
-          open={dropdownOpen} 
-          onOpen={() => setDropdownOpen(true)} 
+          open={dropdownOpen}
+          onOpen={() => setDropdownOpen(true)}
           onClose={() => setDropdownOpen(false)}
         >
           {MUX_OPTICAL_PORT_NUMBERS.map(portNumber => (
@@ -106,17 +128,39 @@ function MuxChart() {
           ))}
         </Select>
       </FormControl>
-      <ResponsiveContainer aspect={2 / 1}>
-        <LineChart data={currentData} margin={{ top: 15, right: 30, left: 20, bottom: 5 }} height={320}>
-          {chartLines}
-          <CartesianGrid stroke='#ccc' strokeDasharray='5 5' />
-          <XAxis dataKey='name' domain={[0, (pollInterval / 1000) * 6]} type='number' tickCount={7}>
-            <Label fontSize={12} value='Time' offset={0} position='insideBottom' />
-          </XAxis>
-          <YAxis domain={[-60, 20]} type='number' tickCount={6} />
-          <Tooltip />
-        </LineChart>
-      </ResponsiveContainer>
+
+      {/* Chart or fallback */}
+      {currentData.length > 0 ? (
+        <ResponsiveContainer aspect={2 / 1}>
+          <LineChart
+            data={currentData ?? []}
+            margin={{ top: 15, right: 30, left: 20, bottom: 5 }}
+            height={320}
+          >
+            {chartLines}
+            <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
+            <XAxis
+              dataKey="name"
+              domain={[0, (pollInterval / 1000) * 6]}
+              type="number"
+              tickCount={7}
+            >
+              <Label
+                fontSize={12}
+                value="Time"
+                offset={0}
+                position="insideBottom"
+              />
+            </XAxis>
+            <YAxis domain={[-60, 20]} type="number" tickCount={6} />
+            <Tooltip />
+          </LineChart>
+        </ResponsiveContainer>
+      ) : (
+        <Typography variant="body2" sx={{ textAlign: 'center', mt: 2 }}>
+          No data available
+        </Typography>
+      )}
     </Box>
   );
 }
